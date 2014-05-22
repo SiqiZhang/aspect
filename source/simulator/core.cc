@@ -800,6 +800,7 @@ namespace aspect
       if (boundary_temperature.get())
         boundary_temperature->update();
 
+            
       // obtain the boundary indicators that belong to Dirichlet-type
       // temperature boundary conditions and interpolate the temperature
       // there
