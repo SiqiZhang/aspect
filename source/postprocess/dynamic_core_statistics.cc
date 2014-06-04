@@ -24,6 +24,8 @@
 #include <aspect/simulator_access.h>
 #include <aspect/boundary_temperature/dynamic_core.h>
 
+#include <deal.II/base/quadrature_lib.h>
+#include <deal.II/fe/fe_values.h>
 
 
 namespace aspect
@@ -174,7 +176,6 @@ namespace aspect
 
       // now add all of the computed heat fluxes to the statistics object
       // and create a single string that can be output to the screen
-      std::ostringstream screen_text;
       unsigned int index = 0;
       for (std::map<types::boundary_id, double>::const_iterator
            p = global_boundary_fluxes.begin();
@@ -265,8 +266,7 @@ namespace aspect
 
           // finally have something for the screen
           screen_text.precision(5);
-		  screen_text <<
-		              <<core_data->Ti <<" K,"
+		  screen_text <<core_data->Ti <<" K,"
 			          <<core_data->Ri*1e-3<<" km";
 
       return std::pair<std::string, std::string> ("Core data (Q_CMB/Q_surface/Tc/Ri)",
