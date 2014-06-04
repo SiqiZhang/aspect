@@ -33,19 +33,25 @@ namespace aspect
   namespace Postprocess
   {
 
-	template <int dim>
-    double
-	DynamicCoreStatistics<dim>::get_CMB_heat_flux() const
-	{
-	  return(CMB_heat_flux);
-	}
+    template <int dim>
+    DynamicCoreStatistics<dim>::DynamicCoreStatistics()
+    {
+      set_CMB_heat_flux(0.0);
+    }
 
-	template <int dim>
-	void
-	DynamicCoreStatistics<dim>::set_CMB_heat_flux(double heat_flux)
-	{
-	  CMB_heat_flux=heat_flux;
-	}
+    template <int dim>
+    double
+    DynamicCoreStatistics<dim>::get_CMB_heat_flux() const
+    {
+      return(CMB_heat_flux);
+    }
+
+    template <int dim>
+    void
+    DynamicCoreStatistics<dim>::set_CMB_heat_flux(double heat_flux)
+    {
+      CMB_heat_flux=heat_flux;
+    }
 
     template <int dim>
     std::pair<std::string,std::string>
@@ -57,11 +63,11 @@ namespace aspect
 		  /*
 	      double T_CMB=SimulatorAccess<dim>::Get_T_CMB(),
 				 R_i=SimulatorAccess<dim>::Get_R_i();*/
-	  AssertThrow (dynamic_cast<const BoundaryTemperature::Dynamic_core<dim>*> (&(SimulatorAccess<dim>::get_boundary_temperature()))
+      AssertThrow (dynamic_cast<const BoundaryTemperature::Dynamic_core<dim>*> (&(SimulatorAccess<dim>::get_boundary_temperature()))
 			  !=0,
 			  ExcMessage ("Dynamic core statistics has to be working with dynamic core boundary conditions."));
-	  const struct BoundaryTemperature::_Core_Data* core_data
-		  =(dynamic_cast<const BoundaryTemperature::Dynamic_core<dim>&> 
+      const struct BoundaryTemperature::_Core_Data* core_data
+        =(dynamic_cast<const BoundaryTemperature::Dynamic_core<dim>&> 
 		  (SimulatorAccess<dim>::get_boundary_temperature())).get_core_data();
       // Calculate the heat flux at the top and bottom boundaries
 	  // copied from heat_flux_statistics.cc
@@ -172,6 +178,7 @@ namespace aspect
              p = boundary_indicators.begin();
              p != boundary_indicators.end(); ++p, ++index)
           global_boundary_fluxes[*p] = global_values[index];
+        set_CMB_heat_flux(-global_boundary_fluxes[0]);
       }
 
       // now add all of the computed heat fluxes to the statistics object
@@ -193,8 +200,7 @@ namespace aspect
 
           // finally have something for the screen
           screen_text.precision(4);
-          screen_text << p->second << " W"
-                      << (index == global_boundary_fluxes.size()-1 ? "" : ", ");
+          screen_text << p->second << " W,";
 
 	    }
 		
