@@ -342,7 +342,16 @@ namespace aspect
         while(!(dT0==0 || dT2==0 || steps>max_steps))
         {
             // If solution is out of the interval, then something is wrong. 
-            AssertThrow(dT0*dT2<=0,ExcMessage("No single solution for inner core!"));
+					if(dT0*dT2>0)
+					{
+						cout<<"Step: "<<steps<<endl
+                <<" X=["<<X_0<<","<<X_2<<"]"
+							  <<" T=["<<T_0<<","<<T_2<<"]"<<"(K)"
+							  <<" R=["<<R_0/1e3<<","<<R_2/1e3<<"]"<<"(km)"
+							  <<endl;
+            cout<<core_data.Q<<endl;
+						AssertThrow(dT0*dT2<=0,ExcMessage("No single solution for inner core!"));
+					}
             // Get the middle point of the interval
             a1=(a0+a2)/2;
             dT1=get_dT(X_1,T_1,R_1,a1);
@@ -524,16 +533,15 @@ namespace aspect
     Dynamic_core<dim>::update()
     {
         const Postprocess::DynamicCoreStatistics<dim> * dynamic_core_statistics
-			= this->template find_postprocessor<const Postprocess::DynamicCoreStatistics<dim> >();
-		AssertThrow(dynamic_core_statistics!=NULL,
-				ExcMessage ("Dynamic core boundary condition has to work with dynamic core statistics postprocessor."));
-		core_data.Q=dynamic_core_statistics->get_CMB_heat_flux();
-		core_data.dt=this->get_timestep();
-		//core_data.dt=SimulatorAccess<dim>::get_dt();
-        //core_data.Q=-SimulatorAccess<dim>::get_Bottom_Heatflow();
+          = this->template find_postprocessor<const Postprocess::DynamicCoreStatistics<dim> >();
+        AssertThrow(dynamic_core_statistics!=NULL,
+				  ExcMessage ("Dynamic core boundary condition has to work with dynamic core statistics postprocessor."));
+		    core_data.Q=dynamic_core_statistics->get_CMB_heat_flux();
+				// Scale heat flux to 3D for 2D model
+		    core_data.dt=this->get_timestep();
         core_data.H=get_radioheating_rate();
         if(dim==2)core_data.Q*=2.0*Rc;
-        if(is_first_call)
+        if(is_first_call==true)
         {
             P_Core=get_Pressure(0);
 
@@ -549,7 +557,7 @@ namespace aspect
             is_first_call=false;
 
         }
-        else
+        else if(core_data.Q!=0.)
         {
             double X1,R1,T1;
             solve_time_step(X1,T1,R1);
@@ -740,12 +748,11 @@ namespace aspect
     Dynamic_core<dim>::
     get_radioheating_rate() const
     {
-        //double time=SimulatorAccess<dim>::get_time();//+0.5*SimulatorAccess<dim>::get_dt();
-        double time=this->get_time()+0.5*this->get_timestep();
-		double Ht=0;
-        for(unsigned i=0;i<n_radioheating_elements;i++)
-            Ht+=heating_rate[i]*initial_concentration[i]*1e-6*pow(0.5,time/half_life[i]/year_in_seconds/1e9);
-        return Ht;
+      double time=this->get_time()+0.5*this->get_timestep();
+      double Ht=0;
+      for(unsigned i=0;i<n_radioheating_elements;i++)
+        Ht+=heating_rate[i]*initial_concentration[i]*1e-6*pow(0.5,time/half_life[i]/year_in_seconds/1e9);
+      return Ht;
     }
 
   }
