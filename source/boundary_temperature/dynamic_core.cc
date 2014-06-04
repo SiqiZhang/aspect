@@ -200,7 +200,7 @@ namespace aspect
         {
           inner_temperature = prm.get_double ("Inner temperature");
           outer_temperature = prm.get_double ("Outer temperature");
-          Rho_cen              = prm.get_double ("Core density");
+          Rho_cen           = prm.get_double ("Core density");
           g                 = prm.get_double ("Gravity acceleration");
           P_CMB             = prm.get_double ("CMB pressure");
           X_init            = prm.get_double ("Initial light composition");
@@ -338,16 +338,16 @@ namespace aspect
         while(!(dT0==0 || dT2==0 || steps>max_steps))
         {
             // If solution is out of the interval, then something is wrong. 
-					if(dT0*dT2>0)
-					{
-						cout<<"Step: "<<steps<<endl
+            if(dT0*dT2>0)
+            {
+              cout<<"Step: "<<steps<<endl
                 <<" X=["<<X_0<<","<<X_2<<"]"
-							  <<" T=["<<T_0<<","<<T_2<<"]"<<"(K)"
-							  <<" R=["<<R_0/1e3<<","<<R_2/1e3<<"]"<<"(km)"
-							  <<endl;
-            cout<<core_data.Q<<endl;
-						AssertThrow(dT0*dT2<=0,ExcMessage("No single solution for inner core!"));
-					}
+                <<" T=["<<T_0<<","<<T_2<<"]"<<"(K)"
+                <<" R=["<<R_0/1e3<<","<<R_2/1e3<<"]"<<"(km)"
+                <<endl;
+              cout<<core_data.Q<<endl;
+              AssertThrow(dT0*dT2<=0,ExcMessage("No single solution for inner core!"));
+            }
             // Get the middle point of the interval
             a1=(a0+a2)/2;
             dT1=get_dT(X_1,T_1,R_1,a1);
@@ -531,9 +531,9 @@ namespace aspect
         const Postprocess::DynamicCoreStatistics<dim> * dynamic_core_statistics
           = this->template find_postprocessor<const Postprocess::DynamicCoreStatistics<dim> >();
         AssertThrow(dynamic_core_statistics!=NULL,
-				  ExcMessage ("Dynamic core boundary condition has to work with dynamic core statistics postprocessor."));
-		    core_data.Q=dynamic_core_statistics->get_CMB_heat_flux();
-		    core_data.dt=this->get_timestep();
+            ExcMessage ("Dynamic core boundary condition has to work with dynamic core statistics postprocessor."));
+        core_data.Q=dynamic_core_statistics->get_CMB_heat_flux();
+        core_data.dt=this->get_timestep();
         core_data.H=get_radioheating_rate();
         if(is_first_call==true)
         {

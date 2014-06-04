@@ -61,17 +61,17 @@ namespace aspect
       // now add all of the computed heat fluxes to the statistics object
       // and create a single string that can be output to the screen
       std::ostringstream screen_text;
-		  /*
-	      double T_CMB=SimulatorAccess<dim>::Get_T_CMB(),
-				 R_i=SimulatorAccess<dim>::Get_R_i();*/
+      /*
+         double T_CMB=SimulatorAccess<dim>::Get_T_CMB(),
+         R_i=SimulatorAccess<dim>::Get_R_i();*/
       AssertThrow (dynamic_cast<const BoundaryTemperature::Dynamic_core<dim>*> (&(SimulatorAccess<dim>::get_boundary_temperature()))
-			  !=0,
-			  ExcMessage ("Dynamic core statistics has to be working with dynamic core boundary conditions."));
+          !=0,
+          ExcMessage ("Dynamic core statistics has to be working with dynamic core boundary conditions."));
       const struct BoundaryTemperature::_Core_Data* core_data
         =(dynamic_cast<const BoundaryTemperature::Dynamic_core<dim>&> 
-		  (SimulatorAccess<dim>::get_boundary_temperature())).get_core_data();
+            (SimulatorAccess<dim>::get_boundary_temperature())).get_core_data();
       // Calculate the heat flux at the top and bottom boundaries
-	  // copied from heat_flux_statistics.cc
+      // copied from heat_flux_statistics.cc
       // create a quadrature formula based on the temperature element alone.
       const QGauss<dim-1> quadrature_formula (this->get_fe().base_element(this->introspection().base_elements.temperature).degree+1);
 
@@ -211,35 +211,35 @@ namespace aspect
           screen_text.precision(3);
           screen_text << p->second/1e12 << " TW,";
 
-	    }
-		
+        }
+
 
           const std::string name1 = "CMB Temperature (K)";
           //statistics.add_value (name1, SimulatorAccess<dim>::postprocess_dynamic_core.Tcmb);
-		  statistics.add_value (name1, core_data->Ti);
+          statistics.add_value (name1, core_data->Ti);
 
           // also make sure that the other columns filled by the this object
           // all show up with sufficient accuracy and in scientific notation
           statistics.set_precision (name1, 2);
           statistics.set_scientific (name1, false);
-		  
-		  const std::string name2 = "Inner core radius (km)";
-		  //statistics.add_value (name2, SimulatorAccess<dim>::postprocess_dynamic_core.Ri*1e-3);
-		  statistics.add_value (name2, core_data->Ri*1e-3);
-		  // also make sure that the other columns filled by the this object
-		  // all show up with sufficient accuracy and in scientific notation
-		  statistics.set_precision (name2, 2);
-		  statistics.set_scientific (name2, false);
 
-		  const std::string name8 = "Light element concentration (%)";
-		  //statistics.add_value (name8, SimulatorAccess<dim>::postprocess_dynamic_core.Xi*100);
-		  statistics.add_value (name8, core_data->Xi*100);
-		  statistics.set_precision (name8, 4);
-		  statistics.set_scientific (name8, false);
-		  
+          const std::string name2 = "Inner core radius (km)";
+          //statistics.add_value (name2, SimulatorAccess<dim>::postprocess_dynamic_core.Ri*1e-3);
+          statistics.add_value (name2, core_data->Ri*1e-3);
+          // also make sure that the other columns filled by the this object
+          // all show up with sufficient accuracy and in scientific notation
+          statistics.set_precision (name2, 2);
+          statistics.set_scientific (name2, false);
+
+          const std::string name8 = "Light element concentration (%)";
+          //statistics.add_value (name8, SimulatorAccess<dim>::postprocess_dynamic_core.Xi*100);
+          statistics.add_value (name8, core_data->Xi*100);
+          statistics.set_precision (name8, 4);
+          statistics.set_scientific (name8, false);
+
            const std::string name3 = "Es (MW/K)";
            //statistics.add_value (name3, SimulatorAccess<dim>::postprocess_dynamic_core.Es*1e-6);
-		   statistics.add_value (name3, core_data->Es*core_data->dT_dt*1e-6);
+           statistics.add_value (name3, core_data->Es*core_data->dT_dt*1e-6);
            // also make sure that the other columns filled by the this object
            // all show up with sufficient accuracy and in scientific notation
            statistics.set_precision (name3, 2);
@@ -248,14 +248,14 @@ namespace aspect
            const std::string name4 = "Er (MW/K)";
            //statistics.add_value (name4, SimulatorAccess<dim>::postprocess_dynamic_core.Er*1e-6);
            statistics.add_value (name4, core_data->Er*1e-6);
-		   // also make sure that the other columns filled by the this object
+           // also make sure that the other columns filled by the this object
            // all show up with sufficient accuracy and in scientific notation
            statistics.set_precision (name4, 2);
            statistics.set_scientific (name4, false);
 
            const std::string name5 = "El (MW/K)";
            //statistics.add_value (name5, SimulatorAccess<dim>::postprocess_dynamic_core.El*1e-6);
-		   statistics.add_value (name5, core_data->El*core_data->dR_dt*1e-6);
+           statistics.add_value (name5, core_data->El*core_data->dR_dt*1e-6);
            // also make sure that the other columns filled by the this object
            // all show up with sufficient accuracy and in scientific notation
            statistics.set_precision (name5, 2);
@@ -264,7 +264,7 @@ namespace aspect
            const std::string name6 = "Eg (MW/K)";
            //statistics.add_value (name6, SimulatorAccess<dim>::postprocess_dynamic_core.Eg*1e-6);
            statistics.add_value (name6, core_data->Eg*core_data->dR_dt*1e-6);
-		   // also make sure that the other columns filled by the this object
+           // also make sure that the other columns filled by the this object
            // all show up with sufficient accuracy and in scientific notation
            statistics.set_precision (name6, 2);
            statistics.set_scientific (name6, false);
@@ -272,7 +272,7 @@ namespace aspect
            const std::string name7 = "Ek (MW/K)";
            //statistics.add_value (name7, SimulatorAccess<dim>::postprocess_dynamic_core.Ek*1e-6);
            statistics.add_value (name7, core_data->Ek*1e-6);
-		   // also make sure that the other columns filled by the this object
+           // also make sure that the other columns filled by the this object
            // all show up with sufficient accuracy and in scientific notation
            statistics.set_precision (name7, 2);
            statistics.set_scientific (name7, false);
@@ -281,8 +281,8 @@ namespace aspect
 
           // finally have something for the screen
           screen_text.precision(5);
-		  screen_text <<core_data->Ti <<" K,"
-			          <<core_data->Ri*1e-3<<" km";
+          screen_text <<core_data->Ti <<" K,"
+            <<core_data->Ri*1e-3<<" km";
 
       return std::pair<std::string, std::string> ("Core data (Q_CMB/Q_surface/Tc/Ri)",
                                                   screen_text.str());

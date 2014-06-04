@@ -49,11 +49,11 @@ namespace aspect
         virtual
         std::pair<std::string,std::string>
         execute (TableHandler &statistics);
-		
-		double get_CMB_heat_flux() const;
-		void   set_CMB_heat_flux(double heat_flux);
-	  private:
-		double CMB_heat_flux;
+
+        double get_CMB_heat_flux() const;
+        void   set_CMB_heat_flux(double heat_flux);
+      private:
+        double CMB_heat_flux;
     };
   }
 }
