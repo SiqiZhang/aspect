@@ -23,6 +23,7 @@
 #include <aspect/postprocess/dynamic_core_statistics.h>
 #include <aspect/simulator_access.h>
 #include <aspect/boundary_temperature/dynamic_core.h>
+#include <aspect/geometry_model/spherical_shell.h>
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/fe/fe_values.h>
@@ -174,10 +175,18 @@ namespace aspect
 
         // and now take them apart into the global map again
         unsigned int index = 0;
+        // Scale 2D shell to 3D
+        double scale_factor_2D_shell=1.;
+        {
+          const GeometryModel::SphericalShell<2>* shperical_shell_geometry =
+              dynamic_cast<const GeometryModel::SphericalShell<2>*> (&(this->get_geometry_model()));
+          if(shperical_shell_geometry!=NULL)
+            scale_factor_2D_shell=2. * (shperical_shell_geometry->R0);
+        }
         for (std::set<types::boundary_id>::const_iterator
              p = boundary_indicators.begin();
              p != boundary_indicators.end(); ++p, ++index)
-          global_boundary_fluxes[*p] = global_values[index];
+          global_boundary_fluxes[*p] = global_values[index]*scale_factor_2D_shell;
         set_CMB_heat_flux(-global_boundary_fluxes[0]);
       }
 
@@ -190,17 +199,17 @@ namespace aspect
         {
           const std::string name = "Outward heat flux through boundary with indicator "
                                    + Utilities::int_to_string(p->first)
-                                   + " (W)";
-          statistics.add_value (name, p->second);
+                                   + " (TW)";
+          statistics.add_value (name, p->second/1e12);
 
           // also make sure that the other columns filled by the this object
           // all show up with sufficient accuracy and in scientific notation
-          statistics.set_precision (name, 8);
-          statistics.set_scientific (name, true);
+          statistics.set_precision (name, 4);
+          statistics.set_scientific (name, false);
 
           // finally have something for the screen
-          screen_text.precision(4);
-          screen_text << p->second << " W,";
+          screen_text.precision(3);
+          screen_text << p->second/1e12 << " TW,";
 
 	    }
 		
