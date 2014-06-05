@@ -98,9 +98,6 @@ namespace aspect
                              Patterns::Double (),
                              "Temperature at the inner boundary (core mantle boundary) at the "
                              "beginning. Units: K.");
-          prm.declare_entry ("Core radius", "3.485e6",
-                             Patterns::Double (),
-                             "Radius of the core. Units: m");
           prm.declare_entry ("Core density", "12.5e3",
                              Patterns::Double (),
                              "Density of the core. Units: kg/m^3");
@@ -203,7 +200,6 @@ namespace aspect
         {
           inner_temperature = prm.get_double ("Inner temperature");
           outer_temperature = prm.get_double ("Outer temperature");
-          Rc                = prm.get_double ("Core radius");
           Rho_cen              = prm.get_double ("Core density");
           g                 = prm.get_double ("Gravity acceleration");
           P_CMB             = prm.get_double ("CMB pressure");
@@ -537,12 +533,16 @@ namespace aspect
         AssertThrow(dynamic_core_statistics!=NULL,
 				  ExcMessage ("Dynamic core boundary condition has to work with dynamic core statistics postprocessor."));
 		    core_data.Q=dynamic_core_statistics->get_CMB_heat_flux();
-				// Scale heat flux to 3D for 2D model
 		    core_data.dt=this->get_timestep();
         core_data.H=get_radioheating_rate();
-        if(dim==2)core_data.Q*=2.0*Rc;
         if(is_first_call==true)
         {
+            const GeometryModel::SphericalShell<dim>* shperical_shell_geometry =
+                dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&(this->get_geometry_model()));
+            AssertThrow (shperical_shell_geometry != NULL,
+                    ExcMessage ("This boundary model is only implemented if the geometry is "
+                                "in fact a spherical shell."));
+            Rc=shperical_shell_geometry->R0;
             P_Core=get_Pressure(0);
 
             core_data.Ti=inner_temperature;
@@ -579,7 +579,6 @@ namespace aspect
             inner_temperature=T1;
         }
         update_core_data();
-//        SimulatorAccess<dim>::Set_old_time();
     }
     template <int dim>
     double
