@@ -200,7 +200,11 @@ namespace aspect
         {
           inner_temperature = prm.get_double ("Inner temperature");
           outer_temperature = prm.get_double ("Outer temperature");
+<<<<<<< HEAD
           Rho_cen           = prm.get_double ("Core density");
+=======
+          Rho_cen              = prm.get_double ("Core density");
+>>>>>>> change scale 2d to 3d into postprocessor and minor bugfix
           g                 = prm.get_double ("Gravity acceleration");
           P_CMB             = prm.get_double ("CMB pressure");
           X_init            = prm.get_double ("Initial light composition");

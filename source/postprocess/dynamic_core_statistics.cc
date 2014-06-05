@@ -210,7 +210,6 @@ namespace aspect
           // finally have something for the screen
           screen_text.precision(3);
           screen_text << p->second/1e12 << " TW,";
-
         }
 
 
