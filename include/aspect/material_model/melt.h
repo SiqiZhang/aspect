@@ -354,7 +354,7 @@ namespace aspect
         double reference_dT;
 		double mantle_thickness;
 		double earth_radius;
-		double density_difference;
+    std::vector<double> density_difference;
 		double increase_lower_mantle;
         double activation_energy_diffusion_um;
         double activation_volume_diffusion_um;

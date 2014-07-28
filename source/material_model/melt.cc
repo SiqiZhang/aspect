@@ -332,8 +332,10 @@ namespace aspect
 	  const double depth = (this->get_geometry_model()).depth(position);
 	  double depth_nd = depth/(this->get_geometry_model()).maximal_depth();
 	  double T_nd = (temperature-reference_T)/reference_dT;
-	  const double StressZ=yield_stress+yield_stress_increase*depth;
-	  const double strain_rate_II=std::sqrt(std::fabs(second_invariant(strain_rate)));
+	  //const double StressZ=yield_stress+yield_stress_increase*depth;
+	  const double StressZ=yield_stress+yield_stress_increase*pressure;
+
+    const double strain_rate_II=std::sqrt(std::fabs(second_invariant(strain_rate)));
 
 	  
 	  if (!strcmp(viscosity_model.c_str(),"Exponential"))
@@ -350,7 +352,7 @@ namespace aspect
           else
           {
               viscosity = prefactor_diffusion_lm*exp((activation_energy_diffusion_lm+activation_volume_diffusion_lm*pressure)/(R*temperature));
-          }		  
+          }
         }
       else if (!strcmp(viscosity_model.c_str(),"Dislocation"))
         {
@@ -406,7 +408,8 @@ namespace aspect
        // Apply yield stress
        if(strain_rate_II>0.)
          viscosity = std::min(viscosity,StressZ/strain_rate_II/2.0);
-
+         //viscosity = std::min(viscosity,StressZ/strain_rate_II);
+       
        // Apply cutoff
        viscosity = std::max(viscosity,viscosity_cutoff_low);
        viscosity = std::min(viscosity,viscosity_cutoff_high);
@@ -576,8 +579,26 @@ namespace aspect
       if (n_material_data == 1)
       {
         rho = material_lookup[0]->density(temperature,pressure);
+        /*
         if(compositional_fields.size()==1)
           rho+=density_difference*compositional_fields[0];
+        if(compositional_fields.size()==3)
+            rho+=density_difference*compositional_fields[1];
+            */
+        if(density_difference.size()!=0 && density_difference.size()==compositional_fields.size())
+        {
+          for(unsigned i=0;i<compositional_fields.size();i++)
+          {
+            rho+=density_difference[i]*compositional_fields[i];
+          }
+        }
+        else
+        {
+          Assert (density_difference.size()==compositional_fields.size(),
+                ExcMessage("Size of density differences is different from size of compositional fields."
+                           " This can not be intended."));
+        }
+                
       }
       else
         {
@@ -784,19 +805,21 @@ namespace aspect
 		new_compositional_fields.resize(compositional_fields.size());
 		for(unsigned int i=0;i<compositional_fields.size();i++)
 			new_compositional_fields[i]=compositional_fields[i];
-		if(compositional_fields.size()==3)
+		if(compositional_fields.size()==4)
 		{
 	    	//Depletion,  compsitional field[0]
 			// If melting fraction>0.01, the change of depletion = melting fracton extracted
 			if(compositional_fields[2]>1. )
-				//new_compositional_fields[0]=compositional_fields[0]+compositional_fields[2];
+				if(pressure<24e9)
+          new_compositional_fields[0]=compositional_fields[0]+compositional_fields[2];
 			//Water, compsitional field[1]
 			// If melting fraction>0.01, Water will be fully extracted
 			if(compositional_fields[2]>1.)
-				new_compositional_fields[1]=0.;
+				  new_compositional_fields[1]=0.;
 			//Melt compsitional field[2]
 			//static aspect::melting::Melting_data Data_Melt(solidus_filename,liquidus_filename);
 			new_compositional_fields[2]=Data_Melt.Melting_fraction(temperature,pressure,sqrt(position.square()),compositional_fields[1],compositional_fields[0]);
+      if(pressure<1e9)new_compositional_fields[2]=0.;
 /*
 			cout<<"Old composition:"<<compositional_fields[0]<<","
 				                    <<compositional_fields[1]<<","
@@ -904,9 +927,9 @@ namespace aspect
             prm.declare_entry ("Yield stress", "1.17e8",
                                Patterns::Double (0),
                                "Yield stress (Pa)");			
-             prm.declare_entry ("Yield stress increase", "162.3",
+             prm.declare_entry ("Yield stress increase", "0.1",
                                Patterns::Double (0),
-                               "Yield stress increase (Pa/m)");
+                               "Yield stress increase with pressure.");
              prm.declare_entry ("Viscosity cutoff low","1e19",
                                Patterns::Double (0),
                                 "The lowest viscosity cut off Unit: Pa s");
@@ -934,9 +957,9 @@ namespace aspect
              prm.declare_entry ("Lower mantle depth","660e3",
                                Patterns::Double (0),
                                "The depth of lower mantle top.");
-             prm.declare_entry ("Density difference", "0.0",
-                                Patterns::Double (),
-                                "Density difference of composition 1 (kg/m^3)");
+             prm.declare_entry ("Density difference", "",
+                                Patterns::List(Patterns::Double ()),
+                                "Density difference of different composition (kg/m^3)");
 			
              prm.enter_subsection ("Exponential");
              {
@@ -1145,7 +1168,7 @@ namespace aspect
 			depth_litho           = prm.get_double ("Lithosphere depth");
 			depth_trans           = prm.get_double ("Transition zone depth");
 			depth_lower           = prm.get_double ("Lower mantle depth");
-      density_difference    = prm.get_double ("Density difference");
+      density_difference    = Utilities::string_to_double(Utilities::split_string_list(prm.get("Density difference")));
 
 			if (viscosity_model == "Exponential")
               {
@@ -1161,12 +1184,12 @@ namespace aspect
               {
                 prm.enter_subsection ("Diffusion");
                 {
-                  activation_energy_diffusion_um   = prm.get_double ("Activation energy diffusion");
-                  activation_volume_diffusion_um   = prm.get_double ("Activation volume diffusion");
-                  prefactor_diffusion_um           = prm.get_double ("Prefactor diffusion");
-                  activation_energy_diffusion_lm   = prm.get_double ("Activation energy diffusion");
-                  activation_volume_diffusion_lm   = prm.get_double ("Activation volume diffusion");
-                  prefactor_diffusion_lm           = prm.get_double ("Prefactor diffusion");				  
+                  activation_energy_diffusion_um   = prm.get_double ("Activation energy diffusion upper mantle");
+                  activation_volume_diffusion_um   = prm.get_double ("Activation volume diffusion upper mantle");
+                  prefactor_diffusion_um           = prm.get_double ("Prefactor diffusion upper mantle");
+                  activation_energy_diffusion_lm   = prm.get_double ("Activation energy diffusion lower mantle");
+                  activation_volume_diffusion_lm   = prm.get_double ("Activation volume diffusion lower mantle");
+                  prefactor_diffusion_lm           = prm.get_double ("Prefactor diffusion lower mantle");				  
                 }
                 prm.leave_subsection();
               }
