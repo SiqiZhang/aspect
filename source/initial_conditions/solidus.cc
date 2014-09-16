@@ -178,8 +178,8 @@ namespace aspect
         Point<dim> p1,p2;
         p1(0)=spherical_geometry_model->R1-litho_depth_theta;
         p2(0)=spherical_geometry_model->R0-bottom_depth_theta;
-        T_litho  = this->adiabatic_conditions->temperature(p1);
-        T_bottom = this->adiabatic_conditions->temperature(p2);
+        T_litho  = this->get_adiabatic_conditions().temperature(p1);
+        T_bottom = this->get_adiabatic_conditions().temperature(p2);
 
       }
 
@@ -193,7 +193,7 @@ namespace aspect
         if(solidus_curve.n_points!=0)
           T_solidus=solidus_curve.T(0,sqrt(position.square()))+deltaT;
         else
-          T_solidus=this->adiabatic_conditions->temperature(position);
+          T_solidus=this->get_adiabatic_conditions().temperature(position);
       }
       //T_perturbation=pow(0.5,(1.0-Depth/( this->get_geometry_model().maximal_depth()))/0.1 )*magnitude_T*lateral_perturbation;
       //return T_solidus+T_perturbation;
