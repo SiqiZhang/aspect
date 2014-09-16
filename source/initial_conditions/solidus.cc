@@ -33,6 +33,12 @@ namespace aspect
     void MeltingCurve::read(const std::string &filename)
     {
       data_filename=filename;
+      if(filename.size()==0)
+      {
+        //cout<<"No solidus data, adiabatic profile is used."<<endl;
+        n_points=0;
+        return;
+      }
       std::ifstream in(data_filename.c_str(), std::ios::in);
       AssertThrow (in, ExcMessage (std::string("Can't read file <") + filename + ">"));
 
@@ -116,13 +122,14 @@ namespace aspect
     Solidus<dim>::
     initial_temperature (const Point<dim> &position) const
     {
-      double T_min,T_litho;
+      double T_min,T_max,T_litho,T_bottom;
       double T_solidus,T_perturbation;
-      double litho_thick_theta;
+      double litho_depth_theta,bottom_depth_theta;
       double lateral_perturbation;
       double Depth=this->get_geometry_model().depth(position);
+      double Depth_max=this->get_geometry_model().maximal_depth();
 
-      AssertThrow(solidus_curve.n_points!=0,ExcMessage("Error reading solidus file."));
+      //AssertThrow(solidus_curve.n_points!=0,ExcMessage("Error reading solidus file."));
       AssertThrow(solidus_curve.is_radius==true,ExcMessage("The solidus curve has to be radius dependent."));
       const GeometryModel::SphericalShell<dim> *spherical_geometry_model=
         dynamic_cast< const GeometryModel::SphericalShell<dim> *>(&this->get_geometry_model());
@@ -134,6 +141,7 @@ namespace aspect
                   ExcMessage("This initial condition can only be used with a prescribed boundary temperature."));
 
       T_min=(this->get_boundary_temperature()).minimal_temperature();
+      T_max=(this->get_boundary_temperature()).maximal_temperature();
 
       // In case of spherical shell calculate spherical coordinates
       const Tensor<1,dim> scoord = spherical_surface_coordinates(position);
@@ -157,16 +165,41 @@ namespace aspect
           // use a spherical harmonic function as lateral perturbation
           lateral_perturbation = boost::math::spherical_harmonic_r(lateral_wave_number_1,lateral_wave_number_2,scoord[2],scoord[1]);
         }
-      litho_thick_theta=litho_thick-magnitude_lith*lateral_perturbation;
-      T_litho=solidus_curve.T(0,spherical_geometry_model->R1-litho_thick_theta)+deltaT;
-
-      if (litho_thick_theta>0 && Depth<litho_thick_theta)
-        T_solidus=T_min+(T_litho-T_min)*(Depth/litho_thick_theta);
+      litho_depth_theta  = litho_thick-magnitude_lith*lateral_perturbation;
+      bottom_depth_theta = (Depth_max-bottom_thick) - magnitude_bottom*lateral_perturbation;
+      //cout<<Depth<<","<<litho_depth_theta<<","<<bottom_depth_theta<<endl;
+      if(solidus_curve.n_points!=0)
+      {
+        T_litho  = solidus_curve.T(0,spherical_geometry_model->R1-litho_depth_theta)+deltaT;
+        T_bottom = solidus_curve.T(0,spherical_geometry_model->R1-bottom_depth_theta)+deltaT;
+      }
       else
-        T_solidus=solidus_curve.T(0,sqrt(position.square()))+deltaT;
+      {
+        Point<dim> p1,p2;
+        p1(0)=spherical_geometry_model->R1-litho_depth_theta;
+        p2(0)=spherical_geometry_model->R0-bottom_depth_theta;
+        T_litho  = this->adiabatic_conditions->temperature(p1);
+        T_bottom = this->adiabatic_conditions->temperature(p2);
 
-      T_perturbation=Depth/( this->get_geometry_model().maximal_depth() )*magnitude_T*lateral_perturbation;
-      return T_solidus+T_perturbation;
+      }
+
+      if (litho_depth_theta>0 && Depth<litho_depth_theta)
+        T_solidus=T_min+(T_litho-T_min)*(Depth/litho_depth_theta);
+      else if (bottom_depth_theta>0 && Depth>bottom_depth_theta)
+        T_solidus=T_max-(T_max-T_bottom)*((Depth_max-Depth)/(Depth_max-bottom_depth_theta));
+        
+      else
+      {
+        if(solidus_curve.n_points!=0)
+          T_solidus=solidus_curve.T(0,sqrt(position.square()))+deltaT;
+        else
+          T_solidus=this->adiabatic_conditions->temperature(position);
+      }
+      //T_perturbation=pow(0.5,(1.0-Depth/( this->get_geometry_model().maximal_depth()))/0.1 )*magnitude_T*lateral_perturbation;
+      //return T_solidus+T_perturbation;
+
+      //cout<<Depth<<","<<T_solidus<<endl;
+      return T_solidus;
     }
 
 
@@ -206,11 +239,17 @@ namespace aspect
           prm.declare_entry ("Lithosphere thickness","0",
                              Patterns::Double (0),
                              "The thickness of lithosphere thickness. Units: m");
+          prm.declare_entry ("Bottom layer thickness","0",
+                             Patterns::Double (0),
+                             "The thickness of bottom layer thickness. Units: m");          
           prm.enter_subsection("Perturbation");
           {
-            prm.declare_entry ("Temperature amplitude", "0e0",
+            //prm.declare_entry ("Temperature amplitude", "0e0",
+            //                   Patterns::Double (0),
+            //                   "The amplitude of the initial spherical temperature perturbation in (K)");
+            prm.declare_entry ("Bottom layer amplitude", "0e0",
                                Patterns::Double (0),
-                               "The amplitude of the initial spherical temperature perturbation in (K)");
+                               "The amplitude of the perturbation at bottom boundary layer in (m)");            
             prm.declare_entry ("Lithosphere thickness amplitude", "0e0",
                                Patterns::Double (),
                                "The amplitude of the initial lithosphere thickness perturbation in (m)");
@@ -269,9 +308,11 @@ namespace aspect
         {
           deltaT=prm.get_double("Supersolidus");
           litho_thick=prm.get_double("Lithosphere thickness");
+          bottom_thick=prm.get_double("Bottom layer thickness");
           prm.enter_subsection("Perturbation");
           {
-            magnitude_T    = prm.get_double("Temperature amplitude");
+            //magnitude_T    = prm.get_double("Temperature amplitude");
+            magnitude_bottom = prm.get_double("Bottom layer amplitude");
             magnitude_lith = prm.get_double("Lithosphere thickness amplitude");
             lateral_wave_number_1 = prm.get_integer ("Lateral wave number one");
             lateral_wave_number_2 = prm.get_integer ("Lateral wave number two");
@@ -283,6 +324,7 @@ namespace aspect
             // to $ASPECT_SOURCE_DIR, replace it by what CMake has given us
             // as a #define
             solidus_filename = prm.get ("Solidus filename");
+            /*
             {
               const std::string      subst_text = "$ASPECT_SOURCE_DIR";
               std::string::size_type position;
@@ -290,7 +332,7 @@ namespace aspect
                 solidus_filename.replace (solidus_filename.begin()+position,
                                           solidus_filename.begin()+position+subst_text.size(),
                                           ASPECT_SOURCE_DIR);
-            }
+            }*/
 
             // then actually read the file
             solidus_curve.read(solidus_filename);

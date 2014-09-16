@@ -125,9 +125,19 @@ namespace aspect
         double       litho_thick;
 
         /**
+         * Lithosphere thickness.
+         */
+        double       bottom_thick;
+
+        /**
          * Magnitude of temperature perturbation.
          */
-        double       magnitude_T;
+        //double       magnitude_T;
+
+        /**
+         * Magnitude of bottom layer perturbation.
+         */
+        double       magnitude_bottom;
 
         /**
          * Magnitude of lithosphere thickness perturbation.
