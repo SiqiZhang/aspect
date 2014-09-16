@@ -489,6 +489,16 @@ namespace aspect
                          Patterns::Double(0,1),
                          "The fraction of cells with the smallest error that "
                          "should be flagged for coarsening.");
+      prm.declare_entry ("Initial top refinement","",
+                         Patterns::List(Patterns::Integer (0)),
+                         "The list of initial refinements on top surfaces."
+                         "A list of top refinements is carried out after each "
+                         "individual global refinements. ");
+      prm.declare_entry ("Initial bottom refinement","",
+                         Patterns::List(Patterns::Integer (0)),
+                         "The list of initial refinements on bottom surfaces."
+                         "A list of bottom refinements is carried out after each "
+                         "individual global refinements. ");      
       prm.declare_entry ("Minimum refinement level", "0",
                          Patterns::Integer (0),
                          "The minimum refinement level each cell should have, "
@@ -767,6 +777,7 @@ namespace aspect
       coarsening_fraction         = prm.get_double ("Coarsening fraction");
       min_grid_level              = prm.get_integer ("Minimum refinement level");
 
+
       AssertThrow(refinement_fraction >= 0 && coarsening_fraction >= 0,
                   ExcMessage("Refinement/coarsening fractions must be positive."));
       AssertThrow(refinement_fraction+coarsening_fraction <= 1,
@@ -774,6 +785,19 @@ namespace aspect
       AssertThrow(min_grid_level <= initial_global_refinement,
                   ExcMessage("Minimum refinement level must not be larger than "
                              "Initial global refinement."));
+      top_surface_refinement      = Utilities::string_to_int
+                                   (Utilities::split_string_list(prm.get("Initial top refinement")));
+      bottom_surface_refinement   = Utilities::string_to_int
+                                   (Utilities::split_string_list(prm.get("Initial bottom refinement")));
+      AssertThrow(top_surface_refinement.size()==0 ||
+                                   top_surface_refinement.size()==initial_global_refinement,
+                                   ExcMessage("Size of Initial top refinement list should match "
+                                     "Initial global refinement."));
+      AssertThrow(bottom_surface_refinement.size()==0 ||
+                                   bottom_surface_refinement.size()==initial_global_refinement,
+                                   ExcMessage("Size of Initial bottom refinement list should match "
+                                     "Initial global refinement."));
+
 
       // extract the list of times at which additional refinement is requested
       // then sort it and convert it to seconds

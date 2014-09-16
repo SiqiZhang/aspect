@@ -1365,6 +1365,33 @@ namespace aspect
     computing_timer.exit_section ();
   }
 
+  template <int dim>
+  void Simulator<dim>::refine_mesh_surface(unsigned int refine_top, unsigned int refine_bottom)
+  {
+    unsigned int refine_times=std::max(refine_top,refine_bottom);
+    for(unsigned int i=0;i<refine_times;i++)
+    {
+      typename Triangulation<dim>::active_cell_iterator cell = dof_handler.begin_active(),
+           endc = dof_handler.end();
+      for(;cell!=endc;++cell)
+        if(cell->at_boundary())
+        {
+          unsigned int boundary_id=numbers::internal_face_boundary_id;
+          for(unsigned int f=0;f<GeometryInfo<dim>::faces_per_cell; ++f)
+          {
+            boundary_id=cell->face(f)->boundary_indicator();
+            if(boundary_id!=numbers::internal_face_boundary_id)
+              break;
+          }
+          if(boundary_id==1 && i<refine_top)
+            cell->set_refine_flag();
+          if(boundary_id==0 && i<refine_bottom)
+            cell->set_refine_flag();
+        }
+      triangulation.execute_coarsening_and_refinement ();
+
+    }
+  }
 
   template <int dim>
   void Simulator<dim>::refine_mesh (const unsigned int max_grid_level)
@@ -1958,9 +1985,15 @@ namespace aspect
                  cell = triangulation.begin_active();
                  cell != triangulation.end(); ++cell)
               cell->set_refine_flag ();
-
             mesh_refinement_manager.tag_additional_cells ();
             triangulation.execute_coarsening_and_refinement();
+            {
+              unsigned int i_top=0,i_bottom=0;
+              if(parameters.top_surface_refinement.size()!=0)i_top=parameters.top_surface_refinement[n];
+              if(parameters.bottom_surface_refinement.size()!=0)i_bottom=parameters.bottom_surface_refinement[n];
+              refine_mesh_surface(i_top,i_bottom);
+              max_refinement_level+=std::max(i_top,i_bottom);
+            }
           }
 
         global_volume = GridTools::volume (triangulation, mapping);

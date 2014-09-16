@@ -455,6 +455,11 @@ namespace aspect
       void refine_mesh (const unsigned int max_grid_level);
 
       /**
+       * Refine mesh multiple times on top or bottom surface
+       */
+      void refine_mesh_surface(unsigned int refine_top,unsigned int refine_bottom);
+
+      /**
        * @}
        */
 
