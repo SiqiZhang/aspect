@@ -37,6 +37,7 @@ namespace aspect
       {
         //cout<<"No solidus data, adiabatic profile is used."<<endl;
         n_points=0;
+        is_radius=true;
         return;
       }
       std::ifstream in(data_filename.c_str(), std::ios::in);
