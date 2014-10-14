@@ -26,6 +26,7 @@
 #include <aspect/material_model/interface.h>
 #include <aspect/simulator_access.h>
 #include <aspect/melting.h>
+#include <aspect/melt_katz.h>
 
 namespace aspect
 {
@@ -293,9 +294,29 @@ namespace aspect
                                          const NonlinearDependence::Dependence dependence) const;
 		
 		
-		/**
-         * @}
-         */
+      /*
+       * Get the changed temperature after melt.
+       * model given by Katz et al. (2003) and
+       * influnces of Cpx and water are included.
+       */
+      double new_temperature_after_melt(const double temperature,
+                                        const double pressure,
+                                        const std::vector<double> &compositional_fields,
+                                        const Point<dim> &position) const;
+
+      /*
+       * Get the melt fraction iterat through melting relation, 
+       * model given by Katz et al. (2003) and
+       * influnces of Cpx and water are included.
+       */
+      double melt_fraction(const double temperature,
+                           const double pressure,
+                           const std::vector<double> &compositional_fields,
+                           const Point<dim> &position) const;
+
+      /**
+       * @}
+       */
 
         /**
          * @name Functions used in dealing with run-time parameters
@@ -326,48 +347,56 @@ namespace aspect
 		aspect::melting::Melting_data Data_Melt;
 
       private:
-        double reference_rho;
-        double reference_T;
-        double reference_kappa;
-        double reference_specific_heat;
-        double reference_alpha;
-        std::string composition;
-        std::string data_directory;
-        bool compute_phases;
-        bool model_is_compressible;
+    struct Melt_Katz::Parameters melting_parameters;
+    int i_composition_Cpx;
+    int i_composition_H2O;
+    double default_Cpx;
 
-        std::string viscosity_model;
-        double reference_eta;
-        double exponential_T;
-        double exponential_P;
+    double reference_rho;
+    double reference_T;
+    double reference_kappa;
+    double reference_specific_heat;
+    double reference_alpha;
+    std::string composition;
+    std::string data_directory;
+    bool compute_phases;
+    bool model_is_compressible;
+
+    std::string viscosity_model;
+    double reference_eta;
+    double exponential_T;
+    double exponential_P;
 		double exponential_melt;
 		double viscosity_factor_litho;
 		double viscosity_factor_trans;
 		double viscosity_factor_lower;
-        double depth_litho;
+    double depth_litho;
 		double depth_trans;
 		double depth_lower;
 		double viscosity_cutoff_low;
 		double viscosity_cutoff_high;
 		double yield_stress;
-        double yield_stress_increase;
-        double reference_dT;
+    double yield_stress_increase;
+    double reference_dT;
 		double mantle_thickness;
 		double earth_radius;
     std::vector<double> density_difference;
-		double increase_lower_mantle;
-        double activation_energy_diffusion_um;
-        double activation_volume_diffusion_um;
-        double prefactor_diffusion_um;
-        double activation_energy_diffusion_lm;
-        double activation_volume_diffusion_lm;
-        double prefactor_diffusion_lm;        
-		double activation_energy_dislocation;
-        double activation_volume_dislocation;
-        double prefactor_dislocation;
-        double stress_exponent;
+    std::vector<double> viscosity_difference;
+    std::vector<double> yield_factor;
 
-        double k_value;
+		double increase_lower_mantle;
+    double activation_energy_diffusion_um;
+    double activation_volume_diffusion_um;
+    double prefactor_diffusion_um;
+    double activation_energy_diffusion_lm;
+    double activation_volume_diffusion_lm;
+    double prefactor_diffusion_lm;        
+    double activation_energy_dislocation;
+    double activation_volume_dislocation;
+    double prefactor_dislocation;
+    double stress_exponent;
+
+    double k_value;
 		std::string solidus_filename;
 		std::string liquidus_filename;
 		double Lh;
@@ -375,9 +404,9 @@ namespace aspect
 		bool interpolation;
 		double latent_heat;
 		std::string datadirectory;
-        std::vector<std::string> material_file_names;
-        unsigned int n_material_data;
-        std::vector<std_cxx1x::shared_ptr<internal::MaterialLookup> > material_lookup;
+    std::vector<std::string> material_file_names;
+    unsigned int n_material_data;
+    std::vector<std_cxx1x::shared_ptr<internal::MaterialLookup> > material_lookup;
 		double get_deltat (const Point<dim> &position) const;
 		
     };

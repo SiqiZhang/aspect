@@ -1450,6 +1450,7 @@ namespace aspect
        */
       std_cxx11::shared_ptr<FreeSurfaceHandler> free_surface;
 
+
       friend class boost::serialization::access;
       friend class SimulatorAccess<dim>;
       friend class FreeSurfaceHandler;  //FreeSurfaceHandler needs access to the internals of the Simulator

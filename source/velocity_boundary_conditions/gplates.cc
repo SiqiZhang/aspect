@@ -253,7 +253,7 @@ namespace aspect
         AssertThrow(i == n_points,
                     ExcMessage (std::string("Number of read in points does not match number of points in file. File corrupted?")));
       }
-
+/*
       template <int dim>
       Tensor<1,dim>
       GPlatesLookup::surface_velocity(const Point<dim> &position,
@@ -279,7 +279,127 @@ namespace aspect
 
         return output_boundary_velocity;
       }
+*/
+//----------------------------------------------------------------------------------------
+      Tensor<1,3>
+      GPlatesLookup::spherical_surface_coordinates(const Tensor<1,3> &position) const
+      {
+        Tensor<1,3> scoord;
 
+        scoord[0] = std::acos(position[2]/std::sqrt(position.norm_square())); // Theta
+        scoord[1] = std::atan2(position[1],position[0]); // Phi
+        if (scoord[1] < 0.0) scoord[1] = 2*numbers::PI + scoord[1]; // correct phi to [0,2*pi]
+        scoord[2] = std::sqrt(position.norm_square()); // R
+        return scoord;
+      }
+
+      double
+      GPlatesLookup::get_idphi(const double phi_) const
+      {
+        const double phi = std::max(std::min(phi_,2*numbers::PI-1e-7),0.0);
+
+        Assert(phi>=0, ExcMessage("not in range"));
+        Assert(phi<=2*numbers::PI, ExcMessage("not in range"));
+        return phi/delta_phi;
+      }
+
+      double
+      GPlatesLookup::get_idtheta(const double theta_) const
+      {
+        double theta = std::max(std::min(theta_,numbers::PI-1e-7),0.0);
+
+        Assert(theta>=0, ExcMessage("not in range"));
+        Assert(theta<=numbers::PI, ExcMessage("not in range"));
+        return theta/delta_theta;
+      }
+
+      template <int dim>
+      Tensor<1,dim>
+      GPlatesLookup::surface_velocity(const Point<dim> &position_, const double time_weight) const
+      {
+
+        Tensor<1,dim> tensor_position;
+        for (unsigned int i = 0 ; i < dim; i++) tensor_position[i] = position_[i];
+
+        Tensor<1,3> position;
+        if (dim == 2)
+          {
+            //position = rotate(convert_tensor<dim,3>(tensor_position),rotation_axis,rotation_angle);
+          }
+        else
+          position = convert_tensor<dim,3>(tensor_position);
+
+        const Tensor<1,3> scoord = spherical_surface_coordinates(position);
+
+        const double idtheta = get_idtheta(scoord[0]);
+        const unsigned int idxtheta = static_cast<unsigned int>(idtheta);
+        const unsigned int nexttheta = idxtheta + 1;
+
+
+        const double idphi = get_idphi(scoord[1]);
+        const unsigned int idxphi = static_cast<unsigned int>(idphi);
+        const unsigned int nextphi = (idxphi+1) % velocity_values->n_cols();
+
+
+        Assert(idxtheta<velocity_values->n_rows(), ExcMessage("not in range"));
+        Assert(idxphi  <velocity_values->n_cols(), ExcMessage("not in range"));
+
+        Assert(nexttheta<velocity_values->n_rows(), ExcMessage("not in range"));
+        Assert(nextphi  <velocity_values->n_cols(), ExcMessage("not in range"));
+
+        // compute the coordinates of this point in the
+        // reference cell between the data points
+        const double xi = idtheta-static_cast<double>(idxtheta);
+        const double eta = idphi-static_cast<double>(idxphi);
+
+        Assert ((0 <= xi) && (xi <= 1), ExcInternalError());
+        Assert ((0 <= eta) && (eta <= 1), ExcInternalError());
+        Assert ((0 <= time_weight) && (time_weight <= 1), ExcInternalError());
+
+        // use xi, eta and time_weight for a trilinear interpolation
+        // TODO: interpolation in cartesian probably more accurate
+
+
+        Tensor<1,2> surf_vel;
+
+        surf_vel[0] = time_weight *
+                      ((1-xi)*(1-eta)*(*velocity_values)[idxtheta][idxphi][0] +
+                       xi    *(1-eta)*(*velocity_values)[nexttheta][idxphi][0] +
+                       (1-xi)*eta    *(*velocity_values)[idxtheta][nextphi][0] +
+                       xi    *eta    *(*velocity_values)[nexttheta][nextphi][0]);
+
+        surf_vel[1] = time_weight *
+                      ((1-xi)*(1-eta)*(*velocity_values)[idxtheta][idxphi][1] +
+                       xi    *(1-eta)*(*velocity_values)[nexttheta][idxphi][1] +
+                       (1-xi)*eta    *(*velocity_values)[idxtheta][nextphi][1] +
+                       xi    *eta    *(*velocity_values)[nexttheta][nextphi][1]);
+
+
+        surf_vel[0] += (1-time_weight) *
+                       ((1-xi)*(1-eta)*(*old_velocity_values)[idxtheta][idxphi][0] +
+                        xi    *(1-eta)*(*old_velocity_values)[nexttheta][idxphi][0] +
+                        (1-xi)*eta    *(*old_velocity_values)[idxtheta][nextphi][0] +
+                        xi    *eta    *(*old_velocity_values)[nexttheta][nextphi][0]);
+
+        surf_vel[1] += (1-time_weight) *
+                       ((1-xi)*(1-eta)*(*old_velocity_values)[idxtheta][idxphi][1] +
+                        xi    *(1-eta)*(*old_velocity_values)[nexttheta][idxphi][1] +
+                        (1-xi)*eta    *(*old_velocity_values)[idxtheta][nextphi][1] +
+                        xi    *eta    *(*old_velocity_values)[nexttheta][nextphi][1]);
+
+        const Tensor<1,3> cart_velo = sphere_to_cart_velocity(surf_vel,scoord);
+        Tensor<1,dim> velos;
+
+        if (dim == 2)
+        {
+          //velos = convert_tensor<3,dim>(rotate(cart_velo,rotation_axis,-1.0*rotation_angle));
+        }
+        else
+          velos = convert_tensor<3,dim>(cart_velo);
+
+        return velos;
+      }
+//-------------------------------------------------------------------------------------------------------      
       Tensor<1,3>
       GPlatesLookup::interpolate (const Tensor<1,3> position, const double time_weight) const
       {

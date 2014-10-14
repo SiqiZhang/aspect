@@ -380,6 +380,7 @@ namespace aspect
         {
           viscosity = reference_eta;
         }
+
       // Apply layer dependent factors
       if(depth<depth_litho)
           viscosity *= viscosity_factor_litho;
@@ -394,7 +395,11 @@ namespace aspect
           viscosity *= viscosity_factor_trans*smooth_viscosity;
       }
 
-	  // Apply melt
+       // Apply cutoff
+       viscosity = std::max(viscosity,viscosity_cutoff_low);
+       viscosity = std::min(viscosity,viscosity_cutoff_high);
+
+	     // Apply melt
        double Melt_fraction;
        if(composition.size()==3)
            Melt_fraction=composition[2]/100;
@@ -405,15 +410,29 @@ namespace aspect
        }
        viscosity*=std::exp(-std::log(exponential_melt)*Melt_fraction);
 
-       // Apply yield stress
-       if(strain_rate_II>0.)
-         viscosity = std::min(viscosity,StressZ/strain_rate_II/2.0);
-         //viscosity = std::min(viscosity,StressZ/strain_rate_II);
-       
-       // Apply cutoff
-       viscosity = std::max(viscosity,viscosity_cutoff_low);
-       viscosity = std::min(viscosity,viscosity_cutoff_high);
+       // Apply compositional difference, it can go outside cutoff
+       if(viscosity_difference.size()>0)
+         for(unsigned i=0;i<composition.size();i++)
+           viscosity*=pow(viscosity_difference[i],composition[i]);
 
+       // Apply yield stress
+       if(yield_factor.size()>0 && strain_rate_II>1e-20)
+       {
+         //double viscosity_yield=std::max(viscosity_cutoff_low,std::min(viscosity,StressZ/std::max(1e-20,strain_rate_II)/2.0));
+         double viscosity_yield=std::max(viscosity_cutoff_low,std::min(viscosity,StressZ/strain_rate_II/2.0));
+         double viscosity_new=viscosity;
+         double composition_rest=1.0;
+         for(unsigned i=0;i<composition.size();i++)
+         {
+           double composition_i=std::max(0.,std::min(1.,composition[i]));
+           viscosity_new*=pow(viscosity_yield/viscosity,yield_factor[i+1]*composition_i);
+           composition_rest-=composition_i;
+         }
+         composition_rest=std::max(0.,std::min(1.,composition_rest));
+         viscosity_new*=pow(viscosity_yield/viscosity,yield_factor[0]*composition_rest);
+         viscosity=viscosity_new;
+       }
+       
        return viscosity;
     }
 
@@ -849,25 +868,68 @@ namespace aspect
                         const Point<dim> &position,
                         const NonlinearDependence::Dependence dependence) const
     {
-		//static aspect::melting::Melting_data Data_Melt(solidus_filename,liquidus_filename);
-	    double radius=sqrt(position.square());
-		double T_solidus,T_liquidus,water,depletion;
-		if(compositional_fields.size()==3)
-		{
-			water=compositional_fields[1];
-			depletion=compositional_fields[0];
-		}
-		else
-		{
-			water=0.;
-			depletion=0.;
-		}
-		T_solidus=Data_Melt.get_solidus(pressure,radius,water,depletion),
-		T_liquidus=Data_Melt.get_liquidus(pressure,radius,water,depletion);
-        if(T_solidus<temperature && temperature<T_liquidus)
-			return (Lh/temperature/(T_liquidus-T_solidus));
-		else
-        	return 0.0;
+      //static aspect::melting::Melting_data Data_Melt(solidus_filename,liquidus_filename);
+      double radius=sqrt(position.square());
+      double T_solidus,T_liquidus,water,depletion;
+      if(compositional_fields.size()==3)
+      {
+        water=compositional_fields[1];
+        depletion=compositional_fields[0];
+      }
+      else
+      {
+        water=0.;
+        depletion=0.;
+      }
+      T_solidus=Data_Melt.get_solidus(pressure,radius,water,depletion);
+      T_liquidus=Data_Melt.get_liquidus(pressure,radius,water,depletion);
+      if(T_solidus<temperature && temperature<T_liquidus)
+        return (Lh/temperature/(T_liquidus-T_solidus));
+      else
+        return 0.0;
+    }
+
+    template <int dim>
+    double
+    Melt<dim>::
+    new_temperature_after_melt(const double temperature,
+                               const double pressure,
+                               const std::vector<double> &compositional_fields,
+                               const Point<dim> &position) const
+    {
+      Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
+      double Mcpx,X_H2O,fraction;
+      if(i_composition_Cpx>0 && i_composition_Cpx<(int)compositional_fields.size())
+        Mcpx=compositional_fields[i_composition_Cpx];
+      else
+        Mcpx=default_Cpx;
+      if(i_composition_H2O>0 && i_composition_H2O<(int)compositional_fields.size())
+        X_H2O=compositional_fields[i_composition_H2O];
+      else
+        X_H2O=0.;
+      return melt_calculation.get_modified_temperature(temperature,pressure,Mcpx,X_H2O,fraction);
+    }
+
+    template <int dim>
+    double
+    Melt<dim>::
+    melt_fraction(const double temperature,
+                  const double pressure,
+                  const std::vector<double> &compositional_fields,
+                  const Point<dim> &position) const
+    {
+      Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
+      double Mcpx,X_H2O,fraction;
+      if(i_composition_Cpx>0 && i_composition_Cpx<(int)compositional_fields.size())
+          Mcpx=compositional_fields[i_composition_Cpx];
+      else
+          Mcpx=default_Cpx;
+      if(i_composition_H2O>0 && i_composition_H2O<(int)compositional_fields.size())
+          X_H2O=compositional_fields[i_composition_H2O];
+      else
+          X_H2O=0.;
+      melt_calculation.get_modified_temperature(temperature,pressure,Mcpx,X_H2O,fraction);
+      return fraction;
     }
 
     template <int dim>
@@ -920,8 +982,7 @@ namespace aspect
             prm.declare_entry ("Reference Viscosity", "5e24",
                                Patterns::Double (0),
                                "The value of the constant viscosity. Units: $kg/m/s$.");
-            
-			prm.declare_entry ("Viscosity increase lower mantle", "1e0",
+			      prm.declare_entry ("Viscosity increase lower mantle", "1e0",
                                Patterns::Double (0),
                                "The Viscosity increase (jump) in the lower mantle.");
             prm.declare_entry ("Yield stress", "1.17e8",
@@ -960,7 +1021,15 @@ namespace aspect
              prm.declare_entry ("Density difference", "",
                                 Patterns::List(Patterns::Double ()),
                                 "Density difference of different composition (kg/m^3)");
-			
+             prm.declare_entry ("Viscosity factor", "",
+                                Patterns::List(Patterns::Double ()),
+                                "Viscosity difference of different composition (Pa s)");
+             prm.declare_entry ("Yield stress factor", "0",
+                                Patterns::List(Patterns::Double (0)),
+                                "Yield stress factor of different composition."
+                                "It contains list of n_compositional_field+1 factors,"
+                                "the fist one is for default composition (0 no yield, 1 have yield)");             
+
              prm.enter_subsection ("Exponential");
              {
               prm.declare_entry ("Exponential T", "1e0",
@@ -1081,17 +1150,98 @@ namespace aspect
           prm.leave_subsection();
 		  prm.enter_subsection ("Data");
 		  {
-			      prm.declare_entry ("Solidus filename", "",
-						             Patterns::Anything(),
-									 "The solidus filename.");
+			    prm.declare_entry ("Solidus filename", "",
+						                 Patterns::Anything(),
+									           "The solidus filename.");
 				  prm.declare_entry ("Liquidus filename", "",
-						             Patterns::Anything(),
-									 "The liquidus filename.");
+						                 Patterns::Anything(),
+									           "The liquidus filename.");
 				  prm.declare_entry ("Latent heat","0",
-						             Patterns::Double (),
-									 "The latent hear of melt Units: J/kg");
+						                 Patterns::Double (),
+									           "The latent hear of melt Units: J/kg");
 		 }
-		  prm.leave_subsection();
+		 prm.leave_subsection();
+
+     prm.enter_subsection ("Composition");
+     {
+        prm.declare_entry ("Cpx","-1",
+                           Patterns::Integer(),
+                           "The compositional field index of Cpx");
+        prm.declare_entry ("H2O","-1",
+                           Patterns::Integer(),
+                           "The compositional field index of H2O");
+        prm.declare_entry ("Default Cpx","0.15",
+                           Patterns::Double(),
+                           "The default Cpx concentration of Cpx if no compositoinal field is used");
+     }
+     prm.leave_subsection();
+     prm.enter_subsection ("Melting Data");
+     {
+        prm.declare_entry ("A1","1085.7",
+                           Patterns::Double (),
+                           "A1");
+        prm.declare_entry ("A2","132.9",
+                           Patterns::Double (),
+                           "A2");
+        prm.declare_entry ("A3","-5.1",
+                           Patterns::Double (),
+                           "A3");
+        prm.declare_entry ("B1","1475.0",
+                           Patterns::Double (),
+                           "B1");
+        prm.declare_entry ("B2","80.0",
+                           Patterns::Double (),
+                           "B2");
+        prm.declare_entry ("B3","-3.2",
+                           Patterns::Double (),
+                           "B3");
+        prm.declare_entry ("C1","1780.0",
+                           Patterns::Double (),
+                           "C1");
+        prm.declare_entry ("C2","45.0",
+                           Patterns::Double (),
+                           "C2");
+        prm.declare_entry ("C3","-2.0",
+                           Patterns::Double (),
+                           "C3");
+        prm.declare_entry ("r1","0.5",
+                           Patterns::Double (),
+                           "r1");
+        prm.declare_entry ("r2","0.08",
+                           Patterns::Double (),
+                           "r2");
+        prm.declare_entry ("beta1","1.50",
+                           Patterns::Double (),
+                           "beta1");
+        prm.declare_entry ("beta2","1.50",
+                           Patterns::Double (),
+                           "beta2");
+        prm.declare_entry ("K","43",
+                           Patterns::Double (),
+                           "K");
+        prm.declare_entry ("gamma","0.75",
+                           Patterns::Double (),
+                           "gamma");
+        prm.declare_entry ("D_H2O","0.01",
+                           Patterns::Double (),
+                           "D_H2O");
+        prm.declare_entry ("X1","12.0",
+                           Patterns::Double (),
+                           "X1");
+        prm.declare_entry ("X2","1.0",
+                           Patterns::Double (),
+                           "X2");        
+        prm.declare_entry ("lambda","0.60",
+                           Patterns::Double (),
+                           "lambda");
+        prm.declare_entry ("Cp","1000",
+                           Patterns::Double (),
+                           "Cp");
+        prm.declare_entry ("deltaS","300",
+                           Patterns::Double (),
+                           "deltaS");
+     }
+     prm.leave_subsection();
 		prm.enter_subsection("Steinberger model");
 		{
 		  prm.declare_entry ("Data directory", "data/material-model/steinberger/",
@@ -1152,7 +1302,7 @@ namespace aspect
             exponential_melt      = prm.get_double ("Exponential Melt");
 
 			Assert (dynamic_cast<const GeometryModel::SphericalShell<dim>*>
-                   (this->get_geometry_model())
+                   (&(this->get_geometry_model()))
                     != 0,
                     ExcMessage ("Scaled melting production from 2D to 3D can only be used if the geometry "
                                 "is a spherical shell."));
@@ -1169,6 +1319,8 @@ namespace aspect
 			depth_trans           = prm.get_double ("Transition zone depth");
 			depth_lower           = prm.get_double ("Lower mantle depth");
       density_difference    = Utilities::string_to_double(Utilities::split_string_list(prm.get("Density difference")));
+      viscosity_difference    = Utilities::string_to_double(Utilities::split_string_list(prm.get("Viscosity factor")));
+      yield_factor            = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield stress factor")));
 
 			if (viscosity_model == "Exponential")
               {
@@ -1229,6 +1381,39 @@ namespace aspect
 			  liquidus_filename=prm.get ("Liquidus filename");
 			  Lh=prm.get_double ("Latent heat");
 		  }
+      prm.leave_subsection();
+
+      prm.enter_subsection ("Composition");
+      {
+        i_composition_Cpx = prm.get_integer("Cpx");
+        i_composition_H2O = prm.get_integer("H2O");
+        default_Cpx       = prm.get_double ("Default Cpx");
+      }
+      prm.leave_subsection();
+      prm.enter_subsection ("Melting Data");
+      {
+        melting_parameters.A1      = prm.get_double ("A1");
+        melting_parameters.A2      = prm.get_double ("A2");
+        melting_parameters.A3      = prm.get_double ("A3");
+        melting_parameters.B1      = prm.get_double ("B1");
+        melting_parameters.B2      = prm.get_double ("B2");
+        melting_parameters.B3      = prm.get_double ("B3");
+        melting_parameters.C1      = prm.get_double ("C1");
+        melting_parameters.C2      = prm.get_double ("C2");
+        melting_parameters.C3      = prm.get_double ("C3");
+        melting_parameters.r1      = prm.get_double ("r1");
+        melting_parameters.r2      = prm.get_double ("r2");
+        melting_parameters.beta1   = prm.get_double ("beta1");
+        melting_parameters.beta2   = prm.get_double ("beta2");
+        melting_parameters.K       = prm.get_double ("K");
+        melting_parameters.gamma   = prm.get_double ("gamma");
+        melting_parameters.D_H2O   = prm.get_double ("D_H2O");
+        melting_parameters.X1      = prm.get_double ("X1");
+        melting_parameters.X2      = prm.get_double ("X2");
+        melting_parameters.lambda  = prm.get_double ("lambda");
+        melting_parameters.Cp      = prm.get_double ("Cp");
+        melting_parameters.deltaS  = prm.get_double ("deltaS");
+      }
 		  prm.leave_subsection();
         prm.enter_subsection("Steinberger model");
         {

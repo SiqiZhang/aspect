@@ -275,6 +275,13 @@ namespace aspect
            */
           bool
           gplates_1_4_or_higher(const boost::property_tree::ptree &pt) const;
+
+          Tensor<1,3>
+          spherical_surface_coordinates(const Tensor<1,3> &position) const;
+          double
+          get_idphi(const double phi_) const;
+          double
+          get_idtheta(const double theta_) const;
       };
     }
 
