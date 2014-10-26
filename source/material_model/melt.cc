@@ -333,7 +333,7 @@ namespace aspect
 	  double depth_nd = depth/(this->get_geometry_model()).maximal_depth();
 	  double T_nd = (temperature-reference_T)/reference_dT;
 	  //const double StressZ=yield_stress+yield_stress_increase*depth;
-	  const double StressZ=yield_stress+yield_stress_increase*pressure;
+	  //const double StressZ=yield_stress+yield_stress_increase*pressure;
 
     const double strain_rate_II=std::sqrt(std::fabs(second_invariant(strain_rate)));
 
@@ -419,17 +419,23 @@ namespace aspect
        if(yield_factor.size()>0 && strain_rate_II>1e-20)
        {
          //double viscosity_yield=std::max(viscosity_cutoff_low,std::min(viscosity,StressZ/std::max(1e-20,strain_rate_II)/2.0));
-         double viscosity_yield=std::max(viscosity_cutoff_low,std::min(viscosity,StressZ/strain_rate_II/2.0));
+         //double viscosity_yield=std::max(viscosity_cutoff_low,std::min(viscosity,StressZ/strain_rate_II/2.0));
          double viscosity_new=viscosity;
          double composition_rest=1.0;
          for(unsigned i=0;i<composition.size();i++)
          {
+           double yield_stress_p=yield_stress[i+1]+yield_stress_increase[i+1]*pressure;
+           double viscosity_yield=std::max(viscosity_cutoff_low,std::min(viscosity,yield_stress_p/strain_rate_II/2.0));
            double composition_i=std::max(0.,std::min(1.,composition[i]));
            viscosity_new*=pow(viscosity_yield/viscosity,yield_factor[i+1]*composition_i);
            composition_rest-=composition_i;
          }
-         composition_rest=std::max(0.,std::min(1.,composition_rest));
-         viscosity_new*=pow(viscosity_yield/viscosity,yield_factor[0]*composition_rest);
+         {
+           double yield_stress_p=yield_stress[0]+yield_stress_increase[0]*pressure;
+           double viscosity_yield=std::max(viscosity_cutoff_low,std::min(viscosity,yield_stress_p/strain_rate_II/2.0));
+           composition_rest=std::max(0.,std::min(1.,composition_rest));
+           viscosity_new*=pow(viscosity_yield/viscosity,yield_factor[0]*composition_rest);
+         }
          viscosity=viscosity_new;
        }
        
@@ -986,11 +992,15 @@ namespace aspect
                                Patterns::Double (0),
                                "The Viscosity increase (jump) in the lower mantle.");
             prm.declare_entry ("Yield stress", "1.17e8",
-                               Patterns::Double (0),
-                               "Yield stress (Pa)");			
+                               Patterns::List(Patterns::Double (0)),
+                               "Yield stress for different materials, the first one is the "
+                               "default material. There should be n_compostion+1 values in the "
+                               "list. (Pa)");			
              prm.declare_entry ("Yield stress increase", "0.1",
-                               Patterns::Double (0),
-                               "Yield stress increase with pressure.");
+                               Patterns::List(Patterns::Double (0)),
+                               "Yield stress increase with pressure for different materials, "
+                               "the first one is for the default material. There should be "
+                               "n_compostion+1 values in the list.");
              prm.declare_entry ("Viscosity cutoff low","1e19",
                                Patterns::Double (0),
                                 "The lowest viscosity cut off Unit: Pa s");
@@ -1297,8 +1307,8 @@ namespace aspect
             increase_lower_mantle   = prm.get_double ("Viscosity increase lower mantle");
             viscosity_cutoff_low  = prm.get_double ("Viscosity cutoff low");
             viscosity_cutoff_high = prm.get_double ("Viscosity cutoff high");
-            yield_stress          = prm.get_double ("Yield stress");
-            yield_stress_increase = prm.get_double ("Yield stress increase");
+            //yield_stress          = prm.get_double ("Yield stress");
+            //yield_stress_increase = prm.get_double ("Yield stress increase");
             exponential_melt      = prm.get_double ("Exponential Melt");
 
 			Assert (dynamic_cast<const GeometryModel::SphericalShell<dim>*>
@@ -1319,6 +1329,8 @@ namespace aspect
 			depth_trans           = prm.get_double ("Transition zone depth");
 			depth_lower           = prm.get_double ("Lower mantle depth");
       density_difference    = Utilities::string_to_double(Utilities::split_string_list(prm.get("Density difference")));
+      yield_stress          = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield stress")));
+      yield_stress_increase = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield stress increase")));
       viscosity_difference    = Utilities::string_to_double(Utilities::split_string_list(prm.get("Viscosity factor")));
       yield_factor            = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield stress factor")));
 

@@ -246,7 +246,6 @@ namespace aspect
             velocity_positions[idx_theta][idx_phi] = cartesian_surface_coordinates(spherical_position);
             (*velocity_values)[idx_theta][idx_phi] = sphere_to_cart_velocity(spherical_velocities,spherical_position)
                                                      / cmyr_si;
-
             i++;
           }
 
@@ -359,36 +358,27 @@ namespace aspect
         // use xi, eta and time_weight for a trilinear interpolation
         // TODO: interpolation in cartesian probably more accurate
 
-
-        Tensor<1,2> surf_vel;
-
-        surf_vel[0] = time_weight *
-                      ((1-xi)*(1-eta)*(*velocity_values)[idxtheta][idxphi][0] +
-                       xi    *(1-eta)*(*velocity_values)[nexttheta][idxphi][0] +
-                       (1-xi)*eta    *(*velocity_values)[idxtheta][nextphi][0] +
-                       xi    *eta    *(*velocity_values)[nexttheta][nextphi][0]);
-
-        surf_vel[1] = time_weight *
-                      ((1-xi)*(1-eta)*(*velocity_values)[idxtheta][idxphi][1] +
-                       xi    *(1-eta)*(*velocity_values)[nexttheta][idxphi][1] +
-                       (1-xi)*eta    *(*velocity_values)[idxtheta][nextphi][1] +
-                       xi    *eta    *(*velocity_values)[nexttheta][nextphi][1]);
-
-
-        surf_vel[0] += (1-time_weight) *
-                       ((1-xi)*(1-eta)*(*old_velocity_values)[idxtheta][idxphi][0] +
-                        xi    *(1-eta)*(*old_velocity_values)[nexttheta][idxphi][0] +
-                        (1-xi)*eta    *(*old_velocity_values)[idxtheta][nextphi][0] +
-                        xi    *eta    *(*old_velocity_values)[nexttheta][nextphi][0]);
-
-        surf_vel[1] += (1-time_weight) *
-                       ((1-xi)*(1-eta)*(*old_velocity_values)[idxtheta][idxphi][1] +
-                        xi    *(1-eta)*(*old_velocity_values)[nexttheta][idxphi][1] +
-                        (1-xi)*eta    *(*old_velocity_values)[idxtheta][nextphi][1] +
-                        xi    *eta    *(*old_velocity_values)[nexttheta][nextphi][1]);
-
-        const Tensor<1,3> cart_velo = sphere_to_cart_velocity(surf_vel,scoord);
         Tensor<1,dim> velos;
+        
+        Tensor<1,3> cart_velo;
+        {
+          //Modified by Siqi Zhang
+          const unsigned int idxs[4][2]={{idxtheta,idxphi},
+                                         {nexttheta,idxphi},
+                                         {idxtheta,nextphi},
+                                         {nexttheta,nextphi}};
+          const double weight[4]={(1-xi)*(1-eta),xi*(1-eta),(1-xi)*eta,xi*eta};
+
+          for(unsigned int i=0;i<3;i++)
+            cart_velo[i]=0.;
+          for(unsigned int i=0;i<4;i++)
+            for(unsigned int j=0;j<3;j++)
+            {
+              cart_velo[j]+=  time_weight   * weight[i] * (*velocity_values)[idxs[i][0]][idxs[i][1]][j];
+                          + (1-time_weight) * weight[i] * (*old_velocity_values)[idxs[i][0]][idxs[i][1]][j];
+            }
+          
+        }
 
         if (dim == 2)
         {

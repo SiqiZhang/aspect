@@ -375,11 +375,13 @@ namespace aspect
 		double depth_lower;
 		double viscosity_cutoff_low;
 		double viscosity_cutoff_high;
-		double yield_stress;
-    double yield_stress_increase;
+		//double yield_stress;
+    //double yield_stress_increase;
     double reference_dT;
 		double mantle_thickness;
 		double earth_radius;
+    std::vector<double> yield_stress;
+    std::vector<double> yield_stress_increase;
     std::vector<double> density_difference;
     std::vector<double> viscosity_difference;
     std::vector<double> yield_factor;
