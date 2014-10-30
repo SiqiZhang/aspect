@@ -1,6 +1,10 @@
 #include "aspect/melt_katz.h"
 #include "aspect/bisection.h"
+#include "aspect/simulator_access.h"
+#include <aspect/global.h>
+#include<iostream>
 #include<cmath>
+
 
 namespace Melt_Katz
 {
@@ -15,7 +19,17 @@ namespace Melt_Katz
         this->X=X;
 
         //double return_T=this->solve();
-        double return_T=Bisection::bisecion_solve(*this,Ts,this->T,1e-3);
+        double return_T;
+        try
+        {
+          return_T=Bisection::bisecion_solve(*this,Ts,this->T,1e-3);
+        }
+        catch(int error)
+        {
+          using namespace aspect;
+          std::cout<<"T="<<T<<",P="<<P<<",Mcpx="<<Mcpx<<",X="<<X<<std::endl;
+          AssertThrow(error!=-1,ExcMessage ("No solution found while finding modified temperature by melt"));
+        }
         melt=melt_fraction.get_melt_fraction(return_T,P,Mcpx,X);
         return return_T;
     }
@@ -100,6 +114,18 @@ namespace Melt_Katz
         this->P=P;
         this->Mcpx=Mcpx;
         this->X_H2O=X_H2O;
-        return Bisection::bisecion_solve(*this,0,1,1e-6);
+        double fraction;
+        try
+        {
+          fraction=Bisection::bisecion_solve(*this,0,1,1e-6);
+        }
+        catch (int error)
+        {
+          using namespace aspect;
+          std::cout<<"T="<<T<<",P="<<P<<",Mcpx="<<Mcpx<<",X_H2O="<<X_H2O<<std::endl;
+          AssertThrow(error!=-1,ExcMessage("No solution found while finding solution for melt fraction."));
+        }
+        return fraction;
+
     }
 }

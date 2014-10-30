@@ -926,12 +926,12 @@ namespace aspect
     {
       Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
       double Mcpx,X_H2O,fraction;
-      if(i_composition_Cpx>0 && i_composition_Cpx<(int)compositional_fields.size())
-          Mcpx=compositional_fields[i_composition_Cpx];
+      if(i_composition_Cpx>=0 && i_composition_Cpx<(int)compositional_fields.size())
+          Mcpx=std::max(0.,compositional_fields[i_composition_Cpx]);
       else
           Mcpx=default_Cpx;
-      if(i_composition_H2O>0 && i_composition_H2O<(int)compositional_fields.size())
-          X_H2O=compositional_fields[i_composition_H2O];
+      if(i_composition_H2O>=0 && i_composition_H2O<(int)compositional_fields.size())
+          X_H2O=std::max(0.,compositional_fields[i_composition_H2O]);
       else
           X_H2O=0.;
       melt_calculation.get_modified_temperature(temperature,pressure,Mcpx,X_H2O,fraction);
@@ -1172,7 +1172,7 @@ namespace aspect
 		 }
 		 prm.leave_subsection();
 
-     prm.enter_subsection ("Composition");
+     prm.enter_subsection ("Melting Composition");
      {
         prm.declare_entry ("Cpx","-1",
                            Patterns::Integer(),
@@ -1395,7 +1395,7 @@ namespace aspect
 		  }
       prm.leave_subsection();
 
-      prm.enter_subsection ("Composition");
+      prm.enter_subsection ("Melting Composition");
       {
         i_composition_Cpx = prm.get_integer("Cpx");
         i_composition_H2O = prm.get_integer("H2O");

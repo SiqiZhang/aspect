@@ -68,8 +68,11 @@ namespace aspect
 
             for (unsigned int c=0; c<this->n_compositional_fields(); ++c)
               composition[c] = uh[q][this->introspection().component_indices.compositional_fields[c]];
-            computed_quantities[q](0) = material_model->melt_fraction(temperature,pressure,composition,evaluation_points[q]);
-           }
+            if(pressure<10.e9 && pressure>0)
+              computed_quantities[q](0) = material_model->melt_fraction(temperature,pressure,composition,evaluation_points[q]);
+            else
+              computed_quantities[q](0) = 0.;
+          }
       }
     }
   }
