@@ -88,7 +88,7 @@ namespace Melt_Katz
             // cpx depleted melt
         {
             double Tcpx_out=pow(Fcpx_out,1./parameters.beta1)*(Tll-Ts)+Ts;
-            return Fcpx_out+(1.-Fcpx_out)*pow((T-Tcpx_out)/(Tl-Tcpx_out),parameters.beta2);
+            return std::min(1.0,Fcpx_out+(1.-Fcpx_out)*pow((T-Tcpx_out)/(Tl-Tcpx_out),parameters.beta2));
         }
         else if(X_H2O_melt==0)
             // Anhydrous Melting

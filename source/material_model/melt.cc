@@ -934,7 +934,8 @@ namespace aspect
           X_H2O=std::max(0.,compositional_fields[i_composition_H2O]);
       else
           X_H2O=0.;
-      melt_calculation.get_modified_temperature(temperature,pressure,Mcpx,X_H2O,fraction);
+      //melt_calculation.get_modified_temperature(temperature,pressure,Mcpx,X_H2O,fraction);
+      fraction=melt_calculation.melt_fraction.get_melt_fraction(temperature,pressure,Mcpx,X_H2O);
       return fraction;
     }
 
