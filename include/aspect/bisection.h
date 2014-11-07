@@ -3,6 +3,7 @@
 
 #include<string>
 #include<cmath>
+#include<stdio.h>
 
 namespace Bisection
 {

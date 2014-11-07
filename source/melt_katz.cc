@@ -2,8 +2,9 @@
 #include "aspect/bisection.h"
 #include "aspect/simulator_access.h"
 #include <aspect/global.h>
-#include<iostream>
-#include<cmath>
+#include <iostream>
+#include <cmath>
+#include <stdio.h>
 
 
 namespace Melt_Katz
