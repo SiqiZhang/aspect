@@ -444,8 +444,12 @@ namespace aspect
             double steps=1;
             while(!( (Q0-Q)*(Q2-Q)==0 || steps>max_steps) )
             {
+              if((Q0-Q)*(Q2-Q)>0)
+              {
                 // If no solution in the interval, something is wrong.
+                cout<<"T="<<T<<",Q="<<Q<<",R0="<<R0<<",R2="<<R2<<endl;
                 AssertThrow((Q0-Q)*(Q2-Q)<=0,ExcMessage("No single solution for core radius!"));
+              }
                 R1=(R0+R2)/2.;
                 Q1=get_Qlg(T,R1);
                 if(Q1==Q)
