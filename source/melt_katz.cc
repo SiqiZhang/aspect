@@ -71,9 +71,16 @@ namespace Melt_Katz
     }
 
     double
-    Melt_Katz::Melt_fraction::get_X(double X_bulk,double melt_fraction) const
+    Melt_Katz::Melt_fraction::get_X(double X_bulk, double melt_fraction) const
     {
         return X_bulk/(parameters.D_H2O+melt_fraction*(1.-parameters.D_H2O));
+    }
+
+    double
+    Melt_Katz::Melt_fraction::get_Mcpx(double pressure, double Mcpx, double melt_fraction) const
+    {
+      double Rcpx=parameters.r1+parameters.r2*pressure*1e-9;
+      return std::min(melt_fraction*Rcpx,Mcpx);
     }
 
     double
@@ -109,16 +116,17 @@ namespace Melt_Katz
 
     double
     Melt_Katz::Melt_fraction::get_melt_fraction(double T, double P, double Mcpx, double X_H2O)
-
     {
         this->T=T;
         this->P=P;
-        this->Mcpx=Mcpx;
-        this->X_H2O=X_H2O;
+        this->Mcpx=std::max(0.,Mcpx);
+        this->X_H2O=std::max(0.,X_H2O);
         double fraction;
+        if(P<0. || P>10e9)
+          return 0.;
         try
         {
-          fraction=Bisection::bisecion_solve(*this,0,1,1e-6);
+          fraction=Bisection::bisecion_solve(*this,0,1,1e-8);
         }
         catch (int error)
         {
@@ -129,4 +137,20 @@ namespace Melt_Katz
         return fraction;
 
     }
+
+    double
+    Melt_Katz::Melt_fraction::get_melt_entropy_derivative_temperature(double T, double P, double Mcpx, double X_H2O)
+    {
+        double fraction1=get_melt_fraction(T-dT,P,Mcpx,X_H2O);
+        double fraction2=get_melt_fraction(T+dT,P,Mcpx,X_H2O);
+        return (fraction2-fraction1)/dT/2.*parameters.deltaS;
+    }
+
+    double
+    Melt_Katz::Melt_fraction::get_melt_entropy_derivative_pressure(double T, double P, double Mcpx, double X_H2O)
+    {
+        double fraction1=get_melt_fraction(T,P-dP,Mcpx,X_H2O);
+        double fraction2=get_melt_fraction(T,P+dP,Mcpx,X_H2O);
+        return (fraction2-fraction1)/dP/2.*parameters.deltaS;
+    }    
 }

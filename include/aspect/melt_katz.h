@@ -65,6 +65,8 @@ public:
             Melt_fraction(const struct Parameters &parameters):
                 parameters(parameters)
             {
+              dP=1.e5;
+              dT=1.e-2;
             };
 
             /*
@@ -80,6 +82,16 @@ public:
              * X_H2O in unit wt%
              */
             double get_melt_fraction(double T, double P, double Mcpx, double X_H2O);
+
+            /*
+             * Get the melt entropy derivative of temperature
+             */
+            double get_melt_entropy_derivative_temperature(double T, double P, double Mcpx, double X_H2O);
+
+            /*
+             * Get the melt entropy derivative of pressure
+             */
+            double get_melt_entropy_derivative_pressure(double T, double P, double Mcpx, double X_H2O);
 
             /*
              * Solidut temperature
@@ -106,11 +118,15 @@ public:
 
             double get_X(double X_bulk,double melt_fraction) const;
 
+            double get_Mcpx(double pressure, double Mcpx, double melt_fraction) const;
+
         private:
             double T;
             double P;
             double Mcpx;
             double X_H2O;
+            double dT;
+            double dP;
             /*
              *     Parameters for melting of peridotite after Katz, 2003
              */

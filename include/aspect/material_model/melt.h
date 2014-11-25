@@ -292,8 +292,16 @@ namespace aspect
                                          const std::vector<double> &compositional_fields,
                                          const Point<dim> &position,
                                          const NonlinearDependence::Dependence dependence) const;
-		
-		
+		  /*
+       * Deal with depletion with reaction_term of compositional field.
+       */
+      virtual double reaction_term (const double temperature,
+                                    const double pressure,
+                                    const std::vector<double> &compositional_fields,
+                                    const Point<dim> &position,
+                                    const unsigned int compositional_variable) const;
+
+
       /*
        * Get the changed temperature after melt.
        * model given by Katz et al. (2003) and

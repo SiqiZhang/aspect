@@ -827,24 +827,29 @@ namespace aspect
                         const Point<dim> &position,
                         std::vector<double> &new_compositional_fields) const
     {
-		new_compositional_fields.resize(compositional_fields.size());
-		for(unsigned int i=0;i<compositional_fields.size();i++)
-			new_compositional_fields[i]=compositional_fields[i];
-		if(compositional_fields.size()==4)
-		{
-	    	//Depletion,  compsitional field[0]
-			// If melting fraction>0.01, the change of depletion = melting fracton extracted
-			if(compositional_fields[2]>1. )
-				if(pressure<24e9)
-          new_compositional_fields[0]=compositional_fields[0]+compositional_fields[2];
-			//Water, compsitional field[1]
-			// If melting fraction>0.01, Water will be fully extracted
-			if(compositional_fields[2]>1.)
-				  new_compositional_fields[1]=0.;
-			//Melt compsitional field[2]
-			//static aspect::melting::Melting_data Data_Melt(solidus_filename,liquidus_filename);
-			new_compositional_fields[2]=Data_Melt.Melting_fraction(temperature,pressure,sqrt(position.square()),compositional_fields[1],compositional_fields[0]);
-      if(pressure<1e9)new_compositional_fields[2]=0.;
+      Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
+      new_compositional_fields.resize(compositional_fields.size());
+      double Mcpx,X_H2O,fraction;
+      for(unsigned int i=0;i<compositional_fields.size();i++)
+        new_compositional_fields[i]=compositional_fields[i];
+      /*
+      if(i_composition_Cpx>0 && i_composition_Cpx<(int)compositional_fields.size())
+        Mcpx=compositional_fields[i_composition_Cpx];
+      else
+        Mcpx=0.;
+      if(i_composition_H2O>0 && i_composition_H2O<(int)compositional_fields.size())
+        X_H2O=compositional_fields[i_composition_H2O];
+      else
+        X_H2O=0.;
+      fraction=melt_calculation.melt_fraction.get_melt_fraction(temperature,pressure,Mcpx,X_H2O);
+
+      if(i_composition_Cpx>=0 && i_composition_Cpx<(int)compositional_fields.size())
+        new_compositional_fields[i_composition_Cpx]-=melt_calculation.melt_fraction.get_Mcpx(pressure,Mcpx,fraction)*fraction;
+      if(i_composition_H2O>=0 && i_composition_H2O<(int)compositional_fields.size())
+        new_compositional_fields[i_composition_H2O]-=std::min(melt_calculation.melt_fraction.get_X(X_H2O,fraction),
+                                                              melt_calculation.melt_fraction.get_Xs(pressure))*fraction;
+      */
+      
 /*
 			cout<<"Old composition:"<<compositional_fields[0]<<","
 				                    <<compositional_fields[1]<<","
@@ -858,12 +863,44 @@ namespace aspect
 			{
 				if(new_compositional_fields[i]<0.)
 					new_compositional_fields[i]=0.;
-				if(new_compositional_fields[i]>100.)
-					new_compositional_fields[i]=100.;
+				if(new_compositional_fields[i]>1.)
+					new_compositional_fields[i]=1.;
 			}
-		}
 	    return;
-    }	
+    }
+
+    template <int dim>
+    double
+    Melt<dim>::
+    reaction_term (const double temperature,
+                   const double pressure,
+                   const std::vector<double> &compositional_fields,
+                   const Point<dim> &position,
+                   const unsigned int compositional_variable) const
+    {
+      double delta_C;
+      Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
+      double Mcpx,X_H2O,fraction;
+      if(i_composition_Cpx>=0 && i_composition_Cpx<(int)compositional_fields.size())
+        Mcpx=std::max(0.,compositional_fields[i_composition_Cpx]);
+      else
+        Mcpx=0.;
+      if(i_composition_H2O>=0 && i_composition_H2O<(int)compositional_fields.size())
+        X_H2O=std::max(0.,compositional_fields[i_composition_H2O]);
+      else
+        X_H2O=0.;
+      fraction=melt_calculation.melt_fraction.get_melt_fraction(temperature,pressure,Mcpx,X_H2O);
+      if((int)compositional_variable==i_composition_Cpx)
+        delta_C = -melt_calculation.melt_fraction.get_Mcpx(pressure,Mcpx,fraction);
+      /*
+      if((int)compositional_variable==i_composition_H2O)
+        delta_C = -std::min(melt_calculation.melt_fraction.get_X(X_H2O,fraction),
+                            melt_calculation.melt_fraction.get_Xs(pressure))*fraction;
+      */
+      if(delta_C>0.)
+        cout<<"["<<compositional_variable<<"]P="<<pressure<<",T="<<temperature<<",F="<<fraction<<",Mcpx="<<Mcpx<<",delta_C="<<delta_C<<endl;
+      return delta_C;
+    }
 	
     template <int dim>
     double
@@ -874,25 +911,22 @@ namespace aspect
                         const Point<dim> &position,
                         const NonlinearDependence::Dependence dependence) const
     {
-      //static aspect::melting::Melting_data Data_Melt(solidus_filename,liquidus_filename);
-      double radius=sqrt(position.square());
-      double T_solidus,T_liquidus,water,depletion;
-      if(compositional_fields.size()==3)
-      {
-        water=compositional_fields[1];
-        depletion=compositional_fields[0];
-      }
+      Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
+      double Mcpx,X_H2O,fraction;
+      if(i_composition_Cpx>=0 && i_composition_Cpx<(int)compositional_fields.size())
+          Mcpx=std::max(0.,compositional_fields[i_composition_Cpx]);
       else
-      {
-        water=0.;
-        depletion=0.;
-      }
-      T_solidus=Data_Melt.get_solidus(pressure,radius,water,depletion);
-      T_liquidus=Data_Melt.get_liquidus(pressure,radius,water,depletion);
-      if(T_solidus<temperature && temperature<T_liquidus)
-        return (Lh/temperature/(T_liquidus-T_solidus));
+          Mcpx=default_Cpx;
+      if(i_composition_H2O>=0 && i_composition_H2O<(int)compositional_fields.size())
+          X_H2O=std::max(0.,compositional_fields[i_composition_H2O]);
       else
-        return 0.0;
+          X_H2O=0.;
+     if (dependence == NonlinearDependence::temperature)
+       return melt_calculation.melt_fraction.get_melt_entropy_derivative_temperature(
+           temperature,pressure,Mcpx,X_H2O);
+     else if (dependence == NonlinearDependence::pressure)
+       return melt_calculation.melt_fraction.get_melt_entropy_derivative_pressure(temperature,pressure,Mcpx,X_H2O);
+     return 0.;
     }
 
     template <int dim>
@@ -905,11 +939,11 @@ namespace aspect
     {
       Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
       double Mcpx,X_H2O,fraction;
-      if(i_composition_Cpx>0 && i_composition_Cpx<(int)compositional_fields.size())
+      if(i_composition_Cpx>=0 && i_composition_Cpx<(int)compositional_fields.size())
         Mcpx=compositional_fields[i_composition_Cpx];
       else
         Mcpx=default_Cpx;
-      if(i_composition_H2O>0 && i_composition_H2O<(int)compositional_fields.size())
+      if(i_composition_H2O>=0 && i_composition_H2O<(int)compositional_fields.size())
         X_H2O=compositional_fields[i_composition_H2O];
       else
         X_H2O=0.;
