@@ -1451,6 +1451,11 @@ namespace aspect
       std_cxx11::shared_ptr<FreeSurfaceHandler> free_surface;
 
 
+      /**
+       * Change compositional field due to depletaion
+       */
+      void revise_composition_melt();
+
       friend class boost::serialization::access;
       friend class SimulatorAccess<dim>;
       friend class FreeSurfaceHandler;  //FreeSurfaceHandler needs access to the internals of the Simulator

@@ -21,6 +21,7 @@
 
 #include <aspect/simulator.h>
 #include <aspect/global.h>
+#include <aspect/material_model/melt.h>
 
 #include <deal.II/base/index_set.h>
 #include <deal.II/base/conditional_ostream.h>
@@ -2034,6 +2035,13 @@ namespace aspect
         solve_timestep ();
 
         pcout << std::endl;
+
+        // Dealing with compositon melt
+        if(dynamic_cast<const MaterialModel::Melt<dim>*>(material_model.get())!=0
+            && parameters.n_compositional_fields>0)
+        {
+          revise_composition_melt();
+        }
 
         // update the time step size
         // for now the bool (convection/conduction dominated)

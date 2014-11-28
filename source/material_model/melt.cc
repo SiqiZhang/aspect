@@ -832,12 +832,11 @@ namespace aspect
       double Mcpx,X_H2O,fraction;
       for(unsigned int i=0;i<compositional_fields.size();i++)
         new_compositional_fields[i]=compositional_fields[i];
-      /*
-      if(i_composition_Cpx>0 && i_composition_Cpx<(int)compositional_fields.size())
+      if(i_composition_Cpx>=0 && i_composition_Cpx<(int)compositional_fields.size())
         Mcpx=compositional_fields[i_composition_Cpx];
       else
         Mcpx=0.;
-      if(i_composition_H2O>0 && i_composition_H2O<(int)compositional_fields.size())
+      if(i_composition_H2O>=0 && i_composition_H2O<(int)compositional_fields.size())
         X_H2O=compositional_fields[i_composition_H2O];
       else
         X_H2O=0.;
@@ -848,7 +847,6 @@ namespace aspect
       if(i_composition_H2O>=0 && i_composition_H2O<(int)compositional_fields.size())
         new_compositional_fields[i_composition_H2O]-=std::min(melt_calculation.melt_fraction.get_X(X_H2O,fraction),
                                                               melt_calculation.melt_fraction.get_Xs(pressure))*fraction;
-      */
       
 /*
 			cout<<"Old composition:"<<compositional_fields[0]<<","
@@ -878,7 +876,8 @@ namespace aspect
                    const Point<dim> &position,
                    const unsigned int compositional_variable) const
     {
-      double delta_C;
+      double delta_C=0.;
+      /*
       Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
       double Mcpx,X_H2O,fraction;
       if(i_composition_Cpx>=0 && i_composition_Cpx<(int)compositional_fields.size())
@@ -892,13 +891,12 @@ namespace aspect
       fraction=melt_calculation.melt_fraction.get_melt_fraction(temperature,pressure,Mcpx,X_H2O);
       if((int)compositional_variable==i_composition_Cpx)
         delta_C = -melt_calculation.melt_fraction.get_Mcpx(pressure,Mcpx,fraction);
-      /*
       if((int)compositional_variable==i_composition_H2O)
         delta_C = -std::min(melt_calculation.melt_fraction.get_X(X_H2O,fraction),
                             melt_calculation.melt_fraction.get_Xs(pressure))*fraction;
-      */
-      if(delta_C>0.)
+      if(delta_C>0. || delta_C+compositional_fields[compositional_variable]<0.)
         cout<<"["<<compositional_variable<<"]P="<<pressure<<",T="<<temperature<<",F="<<fraction<<",Mcpx="<<Mcpx<<",delta_C="<<delta_C<<endl;
+      */
       return delta_C;
     }
 	

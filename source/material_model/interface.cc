@@ -635,6 +635,22 @@ namespace aspect
       }
 
     }
+
+    /**
+     * Function to revise the compositional field directly
+     */
+    template <int dim>
+    void
+    Interface<dim>::
+    revise_composition (const double temperature,
+                        const double pressure,
+                        const std::vector<double> &compositional_fields,
+                        const Point<dim> &position,
+                        std::vector<double> &new_compositional_fields) const
+    {
+      return;
+    }    
+    
   }
 }
 

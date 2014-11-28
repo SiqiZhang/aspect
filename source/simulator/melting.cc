@@ -154,5 +154,73 @@ namespace aspect
         }		
 
   }
+
+  template<int dim>
+  void
+  Simulator<dim>::revise_composition_melt()
+  {
+     LinearAlgebra::BlockVector melt_solution;
+     const unsigned int base_element = 3;
+     melt_solution.reinit(system_rhs,false);
+     const std::vector<Point<dim> > support_points
+             = finite_element.base_element(base_element).get_unit_support_points();
+     Assert (support_points.size() != 0,
+          ExcInternalError());
+     FEValues<dim> fe_values (mapping, finite_element,
+                              support_points,
+                              update_values |
+                              update_quadrature_points |
+                              update_JxW_values);
+     std::vector<types::global_dof_index> local_dof_indices (finite_element.dofs_per_cell);
+     for (typename DoFHandler<dim>::active_cell_iterator cell = dof_handler.begin_active();
+         cell != dof_handler.end(); ++cell)
+       if (cell->is_locally_owned())
+       {
+         fe_values.reinit (cell);
+         cell->get_dof_indices (local_dof_indices);
+         //Get presure value on composition nodes
+         std::vector<double> pressure_values(finite_element.base_element(base_element).dofs_per_cell);
+         fe_values[introspection.extractors.pressure].get_function_values(solution,pressure_values);
+         //Get temperature value on composition nodes
+         std::vector<double> temperature_values(finite_element.base_element(base_element).dofs_per_cell);
+         fe_values[introspection.extractors.temperature].get_function_values(solution,temperature_values);
+         for (unsigned int i=0; i<finite_element.base_element(base_element).dofs_per_cell; ++i)
+         {
+           unsigned int system_local_dof[parameters.n_compositional_fields];
+           std::vector<double> composition_values(parameters.n_compositional_fields);
+           std::vector<double> new_composition_value(parameters.n_compositional_fields);
+           for(unsigned j=0;j<parameters.n_compositional_fields;j++)
+           {
+             system_local_dof[j]
+               = finite_element.component_to_system_index(/*compositional component=*/ dim+2+j,
+                   /*dof index within component=*/ i);
+             composition_values[j]=solution[local_dof_indices[system_local_dof[j]]];
+           }
+           this->material_model.get()->revise_composition(temperature_values[i],pressure_values[i],
+                                               composition_values,fe_values.quadrature_point(i),
+                                               new_composition_value);
+           for(unsigned j=0;j<parameters.n_compositional_fields;j++)
+             melt_solution(local_dof_indices[system_local_dof[j]])=new_composition_value[j];
+         }
+       }
+     melt_solution.compress(VectorOperation::insert);
+     // we should not have written at all into any of the blocks with
+     // the exception of the current compostion block
+     for (unsigned int b=0; b<melt_solution.n_blocks(); ++b)
+       if (b < 3)
+         Assert (melt_solution.block(b).l2_norm() == 0,
+             ExcInternalError());
+     //constraints.distribute(melt_solution);
+     for(unsigned j=0;j<parameters.n_compositional_fields;j++)
+       solution.block(3+j) = melt_solution.block(3+j);
+  }     
 }
+ // explicit instantiation of the functions we implement in this file
+ namespace aspect
+ {
+ #define INSTANTIATE(dim) \
+   template void Simulator<dim>::revise_composition_melt();
+
+   ASPECT_INSTANTIATE(INSTANTIATE)
+ }
 

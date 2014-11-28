@@ -673,6 +673,15 @@ namespace aspect
                               MaterialModel::MaterialModelOutputs<dim> &out) const = 0;
 
         /**
+        * modify the compositional fields directly
+        */
+        virtual void revise_composition (const double temperature,
+                                       const double pressure,
+                                       const std::vector<double> &compositional_fields,
+                                       const Point<dim> &position,
+                                       std::vector<double> &new_compositional_fields) const;
+
+        /**
          * @name Functions used in dealing with run-time parameters
          * @{
          */
