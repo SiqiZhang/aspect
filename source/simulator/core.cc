@@ -2036,13 +2036,6 @@ namespace aspect
 
         pcout << std::endl;
 
-        // Dealing with compositon melt
-        if(dynamic_cast<const MaterialModel::Melt<dim>*>(material_model.get())!=0
-            && parameters.n_compositional_fields>0)
-        {
-          revise_composition_melt();
-        }
-
         // update the time step size
         // for now the bool (convection/conduction dominated)
         // returned by compute_time_step is unused, will be
@@ -2083,6 +2076,13 @@ namespace aspect
           free_surface->detach_manifolds();
 
         postprocess ();
+
+        // Dealing with compositon melt
+        if(dynamic_cast<const MaterialModel::Melt<dim>*>(material_model.get())!=0
+            && parameters.n_compositional_fields>0)
+        {
+          revise_composition_melt();
+        }        
 
         // see if this is a time step where additional refinement is requested
         // if so, then loop over as many times as this is necessary
