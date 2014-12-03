@@ -186,8 +186,8 @@ namespace aspect
         for (std::set<types::boundary_id>::const_iterator
              p = boundary_indicators.begin();
              p != boundary_indicators.end(); ++p, ++index)
-          global_boundary_fluxes[*p] = global_values[index]*scale_factor_2D_shell;
-        set_CMB_heat_flux(-global_boundary_fluxes[0]);
+          global_boundary_fluxes[*p] = global_values[index];
+        set_CMB_heat_flux(-global_boundary_fluxes[0]*scale_factor_2D_shell);
       }
 
       // now add all of the computed heat fluxes to the statistics object
