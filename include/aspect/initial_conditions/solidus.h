@@ -132,7 +132,7 @@ namespace aspect
         /**
          * Magnitude of temperature perturbation.
          */
-        //double       magnitude_T;
+        double       magnitude_T;
 
         /**
          * Magnitude of bottom layer perturbation.

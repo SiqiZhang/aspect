@@ -188,7 +188,6 @@ namespace aspect
         T_solidus=T_min+(T_litho-T_min)*(Depth/litho_depth_theta);
       else if (bottom_depth_theta>0 && Depth>bottom_depth_theta)
         T_solidus=T_max-(T_max-T_bottom)*((Depth_max-Depth)/(Depth_max-bottom_depth_theta));
-        
       else
       {
         if(solidus_curve.n_points!=0)
@@ -196,8 +195,8 @@ namespace aspect
         else
           T_solidus=this->get_adiabatic_conditions().temperature(position);
       }
-      //T_perturbation=pow(0.5,(1.0-Depth/( this->get_geometry_model().maximal_depth()))/0.1 )*magnitude_T*lateral_perturbation;
-      //return T_solidus+T_perturbation;
+      T_perturbation=pow(0.5,(1.0-Depth/( this->get_geometry_model().maximal_depth()))/0.1 )*magnitude_T*lateral_perturbation;
+      T_solidus+=T_perturbation;
 
       //cout<<Depth<<","<<T_solidus<<endl;
       return T_solidus;
@@ -245,9 +244,9 @@ namespace aspect
                              "The thickness of bottom layer thickness. Units: m");          
           prm.enter_subsection("Perturbation");
           {
-            //prm.declare_entry ("Temperature amplitude", "0e0",
-            //                   Patterns::Double (0),
-            //                   "The amplitude of the initial spherical temperature perturbation in (K)");
+            prm.declare_entry ("Temperature amplitude", "0e0",
+                               Patterns::Double (0),
+                               "The amplitude of the initial spherical temperature perturbation in (K)");
             prm.declare_entry ("Bottom layer amplitude", "0e0",
                                Patterns::Double (0),
                                "The amplitude of the perturbation at bottom boundary layer in (m)");            
@@ -312,7 +311,7 @@ namespace aspect
           bottom_thick=prm.get_double("Bottom layer thickness");
           prm.enter_subsection("Perturbation");
           {
-            //magnitude_T    = prm.get_double("Temperature amplitude");
+            magnitude_T    = prm.get_double("Temperature amplitude");
             magnitude_bottom = prm.get_double("Bottom layer amplitude");
             magnitude_lith = prm.get_double("Lithosphere thickness amplitude");
             lateral_wave_number_1 = prm.get_integer ("Lateral wave number one");
