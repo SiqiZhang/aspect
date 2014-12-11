@@ -260,7 +260,6 @@ namespace aspect
 
           L=sqrt(3*K0*(log(Rho_cen/Rho_0)+1)/(2*M_PI*G*Rho_0*Rho_cen));
           D=sqrt(3*Cp/(2*M_PI*Alpha*Rho_cen*G));
-          Mc=get_Mass(Rc);
 
         }
         prm.leave_subsection ();
@@ -551,6 +550,7 @@ namespace aspect
                     ExcMessage ("This boundary model is only implemented if the geometry is "
                                 "in fact a spherical shell."));
             Rc=shperical_shell_geometry->R0;
+            Mc=get_Mass(Rc);
             P_Core=get_Pressure(0);
 
             core_data.Ti=inner_temperature;
