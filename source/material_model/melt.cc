@@ -30,6 +30,7 @@
 #include <fstream>
 #include <iostream>
 #include <cstring>
+#include <algorithm>
 
 using namespace dealii;
 
@@ -328,117 +329,30 @@ namespace aspect
                const Point<dim> &position) const
     {
       double viscosity;
-      const double R=  8.341; //TODO gasconstant (well its constant....)
-	  const double depth = (this->get_geometry_model()).depth(position);
-	  double depth_nd = depth/(this->get_geometry_model()).maximal_depth();
-	  double T_nd = (temperature-reference_T)/reference_dT;
-	  //const double StressZ=yield_stress+yield_stress_increase*depth;
-	  //const double StressZ=yield_stress+yield_stress_increase*pressure;
+      const double depth = (this->get_geometry_model()).depth(position);
 
-    const double strain_rate_II=std::sqrt(std::fabs(second_invariant(strain_rate)));
+      const double strain_rate_II=std::max(std::sqrt(std::fabs(second_invariant(strain_rate))),1e-17);
 
-	  
-	  if (!strcmp(viscosity_model.c_str(),"Exponential"))
-       {
-         viscosity = reference_eta * std::exp(-std::log(exponential_T)*T_nd+std::log(exponential_P)*depth_nd);
-       }
-      else if (!strcmp(viscosity_model.c_str(),"Diffusion"))
-        {
-          //viscosity = prefactor_diffusion*exp((activation_energy_diffusion+activation_volume_diffusion*pressure)/(R*temperature));
-          if(depth<depth_lower)
-          {
-              viscosity = prefactor_diffusion_um*exp((activation_energy_diffusion_um+activation_volume_diffusion_um*pressure)/(R*temperature));
-          }
-          else
-          {
-              viscosity = prefactor_diffusion_lm*exp((activation_energy_diffusion_lm+activation_volume_diffusion_lm*pressure)/(R*temperature));
-          }
-        }
-      else if (!strcmp(viscosity_model.c_str(),"Dislocation"))
-        {
-          viscosity = std::min(1e24,std::pow(prefactor_dislocation,-1e0/stress_exponent)*
-                               std::pow(std::max(strain_rate.norm(),1e-17),(1e0-stress_exponent)/stress_exponent)*
-                               exp((activation_energy_dislocation+activation_volume_dislocation*pressure)/(stress_exponent*R*temperature)));
-        }
-      else if (!strcmp(viscosity_model.c_str(),"Composite"))
-        {
-          double smooth_layer=0.1*depth_lower;
-          // Upper mantle
-          double viscosity_diffusion,viscosity_dislocation;
-          viscosity_diffusion = prefactor_diffusion_um*exp((activation_energy_diffusion_um+activation_volume_diffusion_um*pressure)/(R*temperature));
-          viscosity_dislocation = std::pow(prefactor_dislocation,1e0/stress_exponent)*
-                                std::pow(std::max(strain_rate_II,1e-17),(1.0-stress_exponent)/stress_exponent)*
-                                exp((activation_energy_dislocation+activation_volume_dislocation*pressure)/(stress_exponent*R*temperature));
-          double viscosity_um = viscosity_dislocation * viscosity_diffusion / (viscosity_diffusion +  viscosity_dislocation);
-          // Lower mantle
-          double viscosity_lm = prefactor_diffusion_lm*exp((activation_energy_diffusion_lm+activation_volume_diffusion_lm*pressure)/(R*temperature));
-          
-          double smooth_viscosity=exp(log(viscosity_lm/viscosity_um)*(1.+erf((depth-depth_lower)/smooth_layer))/2.);
-          viscosity = viscosity_um*smooth_viscosity;
-        }
-      else
-        {
-          viscosity = reference_eta;
-        }
-
-      // Apply layer dependent factors
-      if(depth<depth_litho)
-          viscosity *= viscosity_factor_litho;
-      else if(depth<depth_trans)
-          viscosity *= 1.e0;
-      else if(depth<depth_lower)
-          viscosity *= viscosity_factor_trans;
-      else
-      {
-          double smooth_layer=0.5*(depth_lower-depth_trans);
-          double smooth_viscosity=exp(log(viscosity_factor_lower/viscosity_factor_trans)*(1.+erf((depth-depth_lower)/smooth_layer))/2.);
-          viscosity *= viscosity_factor_trans*smooth_viscosity;
-      }
+      const double viscosity_diffusion_inverse   = get_viscosity_diffusion_inverse(temperature,pressure,depth);
+      const double viscosity_dislocation_inverse = get_viscosity_dislocation_inverse(temperature,pressure,strain_rate_II,depth);
+      const double viscosity_yield_inverse       = get_viscosity_yield_inverse(pressure,composition,strain_rate_II,depth);
+      const double viscosity_peierls_inverse     = get_viscosity_peierls_inverse(temperature,pressure,strain_rate_II,depth);
+      viscosity=1./(viscosity_diffusion_inverse + viscosity_dislocation_inverse + viscosity_yield_inverse + viscosity_peierls_inverse);
 
        // Apply cutoff
        viscosity = std::max(viscosity,viscosity_cutoff_low);
        viscosity = std::min(viscosity,viscosity_cutoff_high);
 
-	     // Apply melt
-       double Melt_fraction;
-       if(composition.size()==3)
-           Melt_fraction=composition[2]/100;
-       else
-       {
-           double radius=sqrt(position.square());
-           Melt_fraction=Data_Melt.Melting_fraction(temperature,pressure,radius,0.,0.);
-       }
+       /*
+       double radius=sqrt(position.square());
+       Melt_fraction=Data_Melt.Melting_fraction(temperature,pressure,radius,0.,0.);
        viscosity*=std::exp(-std::log(exponential_melt)*Melt_fraction);
+       */
 
        // Apply compositional difference, it can go outside cutoff
        if(viscosity_difference.size()>0)
          for(unsigned i=0;i<composition.size();i++)
            viscosity*=pow(viscosity_difference[i],composition[i]);
-
-       // Apply yield stress
-       if(yield_factor.size()>0 && strain_rate_II>1e-20)
-       {
-         //double viscosity_yield=std::max(viscosity_cutoff_low,std::min(viscosity,StressZ/std::max(1e-20,strain_rate_II)/2.0));
-         //double viscosity_yield=std::max(viscosity_cutoff_low,std::min(viscosity,StressZ/strain_rate_II/2.0));
-         double viscosity_new=viscosity;
-         double composition_rest=1.0;
-         for(unsigned i=0;i<composition.size();i++)
-         {
-           double yield_stress_p=yield_stress[i+1]+yield_stress_increase[i+1]*pressure;
-           double viscosity_yield=std::max(viscosity_cutoff_low,std::min(viscosity,yield_stress_p/strain_rate_II/2.0));
-           double composition_i=std::max(0.,std::min(1.,composition[i]));
-           viscosity_new*=pow(viscosity_yield/viscosity,yield_factor[i+1]*composition_i);
-           composition_rest-=composition_i;
-         }
-         {
-           double yield_stress_p=yield_stress[0]+yield_stress_increase[0]*pressure;
-           double viscosity_yield=std::max(viscosity_cutoff_low,std::min(viscosity,yield_stress_p/strain_rate_II/2.0));
-           composition_rest=std::max(0.,std::min(1.,composition_rest));
-           viscosity_new*=pow(viscosity_yield/viscosity,yield_factor[0]*composition_rest);
-         }
-         viscosity=viscosity_new;
-       }
-       
        return viscosity;
     }
 
@@ -499,36 +413,21 @@ namespace aspect
     Melt<dim>::
     viscosity_ratio (const double temperature,
                      const double pressure,
-                     const std::vector<double> &, /*composition*/
+                     const std::vector<double> &composition,
                      const SymmetricTensor<2,dim> &strain_rate,
                      const Point<dim> &position) const
     {
-      const double R=  8.3143; //TODO gasconstant (well its constant....)
       const double depth = (this->get_geometry_model()).depth(position);
+      const double strain_rate_II=std::max(std::sqrt(std::fabs(second_invariant(strain_rate))),1e-17);
 
-      if (viscosity_model != "Composite")
-        return 1;
-      /*
-      const double viscosity_diffusion = std::min(1e22,(1e0/prefactor_diffusion)*
-                                                  std::exp((activation_energy_diffusion+
-                                                            activation_volume_diffusion*pressure)/(R*temperature)));
-      const double viscosity_dislocation = std::min(1e22,std::pow(prefactor_dislocation,-1e0/stress_exponent)*
-                                                    std::pow(strain_rate.norm(),(1e0-stress_exponent)/
-                                                             stress_exponent)*
-                                                    std::exp((activation_energy_dislocation+
-                                                              activation_volume_dislocation*pressure)/(stress_exponent*R*temperature)));
-      */
-      if(depth<depth_lower)
-      {
-        double viscosity_diffusion,viscosity_dislocation;
-        viscosity_diffusion = prefactor_diffusion_um*exp((activation_energy_diffusion_um+activation_volume_diffusion_um*pressure)/(R*temperature));
-        viscosity_dislocation = std::pow(prefactor_dislocation,1e0/stress_exponent)*
-                                std::pow(strain_rate.norm(),(1.0-stress_exponent)/stress_exponent)*
-                                exp((activation_energy_dislocation+activation_volume_dislocation*pressure)/(stress_exponent*R*temperature));
-        return std::max(1e17,viscosity_dislocation)/std::max(1e17,viscosity_diffusion);
-      }
-      else
-        return 1.;
+      std::vector<double> viscosity_inverse(4);
+      viscosity_inverse[0] = get_viscosity_diffusion_inverse(temperature,pressure,depth);
+      viscosity_inverse[1] = get_viscosity_dislocation_inverse(temperature,pressure,strain_rate_II,depth);
+      viscosity_inverse[2] = get_viscosity_yield_inverse(pressure,composition,strain_rate_II,depth);
+      viscosity_inverse[3] = get_viscosity_peierls_inverse(temperature,pressure,strain_rate_II,depth);
+      std::vector<double>::iterator biggest = std::max_element(viscosity_inverse.begin(), viscosity_inverse.end());
+      // Return which one is the largest in four inversed viscosity values.
+      return std::distance(viscosity_inverse.begin(), biggest);
     }
 
 
@@ -972,6 +871,100 @@ namespace aspect
     }
 
     template <int dim>
+    double
+    Melt<dim>::get_viscosity_arrhenius (double temperature, double pressure, double strain_rate_II, double A, double E, double V, double n) const
+    {
+      return pow(A,-1./n)
+            *exp((E+pressure*V)/(n*R_gas*temperature))
+            *pow(strain_rate_II,(1.-n)/n);
+    }
+
+    template <int dim>
+    double
+    Melt<dim>::get_viscosity_diffusion_inverse (double temperature, double pressure, double depth) const
+    {
+      if(is_diffusion_enable)
+      {
+        if(depth<depth_lower)
+          return 1./get_viscosity_arrhenius(temperature,pressure,1.,
+                                            prefactor_diffusion_um,  
+                                            activation_energy_diffusion_um,
+                                            activation_volume_diffusion_um,
+                                            1.);
+        else
+          return 1./get_viscosity_arrhenius(temperature,pressure,1.,        
+                                            prefactor_diffusion_lm,         
+                                            activation_energy_diffusion_lm, 
+                                            activation_volume_diffusion_lm, 
+                                            1.);
+      }
+      else
+        return 0.;
+    }
+
+    template <int dim>
+    double
+    Melt<dim>::get_viscosity_dislocation_inverse (double temperature, double pressure, double strain_rate_II, double depth) const
+    {
+      if(is_dislocation_enable && depth<depth_lower)
+        return 1./get_viscosity_arrhenius(temperature,pressure,strain_rate_II,
+                                          prefactor_dislocation,
+                                          activation_energy_dislocation,
+                                          activation_volume_dislocation,
+                                          stress_exponent_dislocation);
+      else
+        return 0.;
+    }
+
+    template <int dim> 
+    double
+    Melt<dim>::get_viscosity_peierls_inverse (double temperature, double pressure, double strain_rate_II, double depth) const
+    {
+      if(is_peierls_enable && depth<depth_lower)
+        return 1./get_viscosity_arrhenius(temperature,pressure,strain_rate_II,
+                                         prefactor_peierls,
+                                         activation_energy_peierls,
+                                         activation_volume_peierls,
+                                         stress_exponent_peierls);
+      else
+        return 0.;
+    }
+
+    template <int dim> 
+    double
+    Melt<dim>::get_viscosity_yield_inverse (double pressure,
+                                            const std::vector<double>    &compositional_fields,
+                                            double strain_rate_II,
+                                            double depth) const
+    {
+      if(is_yield_enable && depth<depth_lower)
+      {
+        unsigned int n_compositional_fields=compositional_fields.size();
+        double yield_stress=0.;
+        double default_composition=1.;
+        if(is_yield_dependent_on_composition)
+        {
+          for(unsigned i=0;i<n_compositional_fields;i++)
+          {
+            double composition_i=std::min(1.,std::max(compositional_fields[i]*yield_composition_factor[i+1],0.));
+            yield_stress += (yield_stress_surface[i+1]+yield_friction[i+1]*pressure)*composition_i;
+            default_composition -= composition_i;
+          }
+          default_composition = std::min(std::max(0.,default_composition),1.);
+          yield_stress += (yield_stress_surface[0]+yield_friction[0]*pressure)
+                          *default_composition*yield_composition_factor[0];
+        }
+        else
+        {
+          yield_stress=yield_stress_surface[0]+yield_friction[0]*pressure;        
+        }
+        return 1./yield_stress*strain_rate_II*2.0;
+      }
+      else
+        return 0.;
+    }
+
+    template <int dim>
     void
     Melt<dim>::declare_parameters (ParameterHandler &prm)
     {
@@ -997,10 +990,6 @@ namespace aspect
                              Patterns::Double (0),
                              "The value of the thermal expansion coefficient $\\beta$. "
                              "Units: $1/K$.");
-          prm.declare_entry ("Gravity", "30",
-                             Patterns::Double (0),
-                             "The value of the gravity constant."
-                             "Units: $m/s^2$.");
           prm.declare_entry ("Composition", "standard",
                              Patterns::Anything (),
                              "The Composition of the model. ");
@@ -1015,25 +1004,9 @@ namespace aspect
                              "whether the model is compressible. ");
           prm.enter_subsection ("Viscosity");
           {
-            prm.declare_entry ("Viscosity Model", "Exponential",
-                               Patterns::Anything (),
-                               "Viscosity Model");
             prm.declare_entry ("Reference Viscosity", "5e24",
                                Patterns::Double (0),
                                "The value of the constant viscosity. Units: $kg/m/s$.");
-			      prm.declare_entry ("Viscosity increase lower mantle", "1e0",
-                               Patterns::Double (0),
-                               "The Viscosity increase (jump) in the lower mantle.");
-            prm.declare_entry ("Yield stress", "1.17e8",
-                               Patterns::List(Patterns::Double (0)),
-                               "Yield stress for different materials, the first one is the "
-                               "default material. There should be n_compostion+1 values in the "
-                               "list. (Pa)");			
-             prm.declare_entry ("Yield stress increase", "0.1",
-                               Patterns::List(Patterns::Double (0)),
-                               "Yield stress increase with pressure for different materials, "
-                               "the first one is for the default material. There should be "
-                               "n_compostion+1 values in the list.");
              prm.declare_entry ("Viscosity cutoff low","1e19",
                                Patterns::Double (0),
                                 "The lowest viscosity cut off Unit: Pa s");
@@ -1043,21 +1016,6 @@ namespace aspect
              prm.declare_entry ("Exponential Melt", "1e0",
 					                      Patterns::Double (0),
                                 "Multiplication factor or melting fraction exponent");
-             prm.declare_entry ("Viscosity factor lithosphere","1",
-                               Patterns::Double (0),
-                               "The Viscosity factor of lithosphere");
-             prm.declare_entry ("Viscosity factor transition zone","1",
-                               Patterns::Double (0),
-                               "The Viscosity factor of transition zone.");
-             prm.declare_entry ("Viscosity factor lower mantle","1",
-                               Patterns::Double (0),
-                               "The Viscosity factor of lower mantle.");
-             prm.declare_entry ("Lithosphere depth","100e3",
-                               Patterns::Double (0),
-                               "The depth of lithosphere bottom.");
-             prm.declare_entry ("Transition zone depth","410e3",
-                               Patterns::Double (0),
-                               "The depth of transition zone top.");
              prm.declare_entry ("Lower mantle depth","660e3",
                                Patterns::Double (0),
                                "The depth of lower mantle top.");
@@ -1067,248 +1025,237 @@ namespace aspect
              prm.declare_entry ("Viscosity factor", "",
                                 Patterns::List(Patterns::Double ()),
                                 "Viscosity difference of different composition (Pa s)");
-             prm.declare_entry ("Yield stress factor", "0",
-                                Patterns::List(Patterns::Double (0)),
-                                "Yield stress factor of different composition."
-                                "It contains list of n_compositional_field+1 factors,"
-                                "the fist one is for default composition (0 no yield, 1 have yield)");             
-
-             prm.enter_subsection ("Exponential");
+             //Yield stress
+             prm.declare_entry ("Enable yield", "false",
+                                Patterns::Bool (),
+                                "Whether the model consider yield. ");
+             prm.enter_subsection ("Yield stress");
              {
-              prm.declare_entry ("Exponential T", "1e0",
+               
+               prm.declare_entry ("Composition factor", "0",
+                                  Patterns::List(Patterns::Double (0)),
+                                  "Scale factor of different composition for calculate yield stress."
+                                  "It contains list of n_compositional_field+1 factors,"
+                                  "the fist one is for default composition (0 no yield)");
+               prm.declare_entry ("Yield stress surface", "1.17e8",
+                                  Patterns::List(Patterns::Double ()),
+                                  "Yield stress on surface for different materials, the first one is the "
+                                  "default material. There should be n_compostion+1 values in the "
+                                  "list. (Pa)");
+               prm.declare_entry ("Yield friction", "0.1",
+                                  Patterns::List(Patterns::Double (0)),
+                                  "Yield friction coefficient for different materials, "
+                                  "the first one is for the default material. There should be "
+                                  "n_compostion+1 values in the list.");
+               prm.declare_entry ("Yield stress max","10e9",
+                                  Patterns::List(Patterns::Double ()),
+                                  "The max yield stress for different materials, "
+                                  "the first one is for the default material. There should be "
+                                  "n_compostion+1 values in the list.");
+             }
+             prm.leave_subsection();
+
+             //Diffusion creep
+             prm.declare_entry ("Enable diffusion", "false",
+                                Patterns::Bool (),
+                                "Whether the model consider diffusion creep. ");
+             prm.enter_subsection ("Diffusion creep");
+             {
+               prm.declare_entry ("E_UM", "335e3",
+                                  Patterns::Double (0),
+                                  "Activation energy for diffusion creep of upper mantle."
+                                  "Unit: J/mol");
+               prm.declare_entry ("V_UM", "4.0e-6",
+                                  Patterns::Double (0),
+                                  "Activation volume for diffusion creep of upper mantle."
+                                  "Unit: m^3/mol");
+               prm.declare_entry ("A_UM", "1.92e-11",
+                                  Patterns::Double (0),
+                                  "Prefactor for diffusion creep of upper mantle."
+                                  "Yita=1/A*(E+P*V)/(R*T)");
+
+               prm.declare_entry ("E_LM", "335e3",
+                                  Patterns::Double (0),
+                                  "Activation energy for diffusion creep of lower mantle"
+                                  "Unit: J/mol");
+               prm.declare_entry ("V_LM", "4.0e-6",
+                                  Patterns::Double (0),
+                                  "Activation volume for diffusion creep of lower mantle"
+                                  "Unit: m^3/mol");
+               prm.declare_entry ("A_LM", "1.92e-11",
+                                  Patterns::Double (0),
+                                  "prefactor for diffusion creep of lower mantle"
+                                  "Yita=1/A*(E+P*V)/(R*T)");			  
+             }
+             prm.leave_subsection();
+
+             // Dislocation creep
+             prm.declare_entry ("Enable dislocation","false",
+                                Patterns::Bool (),
+                                "Whether the model consider dislocation creep. ");
+             prm.enter_subsection ("Dislocation creep");
+             {
+               prm.declare_entry ("E", "335e3",
+                                  Patterns::Double (0),
+                                  "Activation energy for dislocation creep"
+                                  "Unit: J/mol");
+               prm.declare_entry ("V", "4.0e-6",
+                                  Patterns::Double (0),
+                                  "Activation volume for dislocation creep"
+                                  "Unit: m^3/mol");
+               prm.declare_entry ("A", "1.92e-11",
+                                  Patterns::Double (0),
+                                  "Prefactor for dislocation creep "
+                                  "Yita=A^(-1/n)*(E+P*V)/(n*R*T)*Strain_rate_II^((1-n)/n)");
+               prm.declare_entry ("n", "3.5",
+                                  Patterns::Double (0),
+                                  "Stress exponent for dislocation creep");
+             }
+             prm.leave_subsection();
+
+             //Peierls creep
+             prm.declare_entry ("Enable peierls","false",
+                                Patterns::Bool (),
+                                "Whether the model consider peierls creep. ");
+             prm.enter_subsection ("Peierls creep");
+             {
+               prm.declare_entry ("E", "335e3",
+                                  Patterns::Double (0),
+                                  "Activation energy for peierls creep"
+                                  "Unit: J/mol");
+               prm.declare_entry ("V", "4.0e-6",
                                  Patterns::Double (0),
-                                 "Multiplication factor or Temperature exponent");
-              prm.declare_entry ("Exponential P", "1e0",
-                                 Patterns::Double (0),
-                                 "Multiplication factor or Pressure exponent");
-              prm.declare_entry ("Mantle Temperature Jump", "4000.0",
-                                 Patterns::Double (0),
-                                 "Mantle temperature jump (K)");
-             /*
-			 prm.declare_entry ("Viscosity factor lithosphere","1",
-                               Patterns::Double (0),
-                               "The Viscosity factor of lithosphere");			
-             prm.declare_entry ("Viscosity factor transition zone","1",
-                               Patterns::Double (0),
-                               "The Viscosity factor of transition zone.");
-             prm.declare_entry ("Viscosity factor lower mantle","1",
-                               Patterns::Double (0),
-                               "The Viscosity factor of lower mantle.");
-             prm.declare_entry ("Lithosphere depth","100e3",
-                               Patterns::Double (0),
-                               "The depth of lithosphere bottom.");
-             prm.declare_entry ("Transition zone depth","410e3",
-                               Patterns::Double (0),
-                               "The depth of transition zone top.");
-             prm.declare_entry ("Lower mantle depth","660e3",
-                               Patterns::Double (0),
-                               "The depth of lower mantle top.");			 
-			 prm.declare_entry ("Viscosity cutoff low","1e-2",
-					           Patterns::Double (0),
-							    "The lowest viscosity cut off in the times of reference");
-			 prm.declare_entry ("Viscosity cutoff high","1e2",
-					           Patterns::Double (0),
-							   "The largest viscosity cut off in the times of reference");*/
-			}
-            prm.leave_subsection();
-            prm.enter_subsection ("Diffusion");
-            {
-              prm.declare_entry ("Activation energy diffusion upper mantle", "335e3",
-                                 Patterns::Double (0),
-                                 "activation energy for diffusion creep");
-              prm.declare_entry ("Activation volume diffusion upper mantle", "4.0e-6",
-                                 Patterns::Double (0),
-                                 "activation volume for diffusion creep");
-              prm.declare_entry ("Prefactor diffusion upper mantle", "1.92e-11",
-                                 Patterns::Double (0),
-                                 "prefactor for diffusion creep "
-                                 "(1e0/prefactor)*exp((activation\\_energy+activation\\_volume*pressure)/(R*temperature))");
-              prm.declare_entry ("Activation energy diffusion lower mantle", "335e3",
-                                 Patterns::Double (0),
-                                 "activation energy for diffusion creep");
-              prm.declare_entry ("Activation volume diffusion lower mantle", "4.0e-6",
-                                 Patterns::Double (0),
-                                 "activation volume for diffusion creep");
-              prm.declare_entry ("Prefactor diffusion lower mantle", "1.92e-11",
-                                 Patterns::Double (0),
-                                 "prefactor for diffusion creep "
-                                 "(1e0/prefactor)*exp((activation\\_energy+activation\\_volume*pressure)/(R*temperature))");			  
-            }
-            prm.leave_subsection();
-            prm.enter_subsection ("Dislocation");
-            {
-              prm.declare_entry ("Activation energy dislocation", "335e3",
-                                 Patterns::Double (0),
-                                 "activation energy for dislocation creep");
-              prm.declare_entry ("Activation volume dislocation", "4.0e-6",
-                                 Patterns::Double (0),
-                                 "activation volume for dislocation creep");
-              prm.declare_entry ("Prefactor dislocation", "1.92e-11",
-                                 Patterns::Double (0),
-                                 "prefactor for dislocation creep "
-                                 "prefactor*exp((activation\\_energy+activation\\_volume*pressure)/(R*temperature))");
-              prm.declare_entry ("Stress exponent", "3.5",
-                                 Patterns::Double (0),
-                                 "stress exponent for dislocation creep");
-            }
-            prm.leave_subsection();
-            prm.enter_subsection ("Composite");
-            {
-              prm.declare_entry ("Activation energy diffusion upper mantle", "335e3",
-                                 Patterns::Double (0),
-                                 "activation energy for diffusion creep");
-              prm.declare_entry ("Activation volume diffusion upper mantle", "4.0e-6",
-                                 Patterns::Double (0),
-                                 "activation volume for diffusion creep");
-              prm.declare_entry ("Prefactor diffusion upper mantle", "1.92e-11",
-                                 Patterns::Double (0),
-                                 "prefactor for diffusion creep "
-                                 "(1e0/prefactor)*exp((activation\\_energy+activation\\_volume*pressure)/(R*temperature))");
-              prm.declare_entry ("Activation energy diffusion lower mantle", "335e3",
-                                 Patterns::Double (0),
-                                 "activation energy for diffusion creep");
-              prm.declare_entry ("Activation volume diffusion lower mantle", "4.0e-6",
-                                 Patterns::Double (0),
-                                 "activation volume for diffusion creep");
-              prm.declare_entry ("Prefactor diffusion lower mantle", "1.92e-11",
-                                 Patterns::Double (0),
-                                 "prefactor for diffusion creep "
-                                 "(1e0/prefactor)*exp((activation\\_energy+activation\\_volume*pressure)/(R*temperature))");
-              prm.declare_entry ("Activation energy dislocation", "540e3",
-                                 Patterns::Double (0),
-                                 "activation energy for dislocation creep");
-              prm.declare_entry ("Activation volume dislocation", "14.0e-6",
-                                 Patterns::Double (0),
-                                 "activation volume for dislocation creep");
-              prm.declare_entry ("Prefactor dislocation", "2.42e-10",
-                                 Patterns::Double (0),
-                                 "prefactor for dislocation creep "
-                                 "(1e0/prefactor)*exp((activation\\_energy+activation\\_volume*pressure)/(R*temperature))");
-              prm.declare_entry ("Stress exponent", "3.5",
-                                 Patterns::Double (0),
-                                 "stress exponent for dislocation creep");
-            }
-            prm.leave_subsection();
+                                 "Activation volume for peierls creep"
+                                 "Unit: m^3/mol");
+               prm.declare_entry ("A", "1.92e-11",
+                                  Patterns::Double (0),
+                                  "Prefactor for peierls creep "
+                                  "Yita=A^(-1/n)*(E+P*V)/(n*R*T)*Strain_rate_II^((1-n)/n)");
+               prm.declare_entry ("n", "3.5",
+                                  Patterns::Double (0),
+                                  "Stress exponent for dislocation creep");
+             }
+             prm.leave_subsection();
           }
           prm.leave_subsection();
-		  prm.enter_subsection ("Data");
-		  {
-			    prm.declare_entry ("Solidus filename", "",
-						                 Patterns::Anything(),
-									           "The solidus filename.");
-				  prm.declare_entry ("Liquidus filename", "",
-						                 Patterns::Anything(),
-									           "The liquidus filename.");
-				  prm.declare_entry ("Latent heat","0",
-						                 Patterns::Double (),
-									           "The latent hear of melt Units: J/kg");
-		 }
-		 prm.leave_subsection();
+          prm.enter_subsection ("Data");
+          {
+            prm.declare_entry ("Solidus filename", "",
+						                   Patterns::Anything(),
+									             "The solidus filename.");
+				    prm.declare_entry ("Liquidus filename", "",
+						                   Patterns::Anything(),
+							  		           "The liquidus filename.");
+			  	  prm.declare_entry ("Latent heat","0",
+				  		                 Patterns::Double (),
+					  				           "The latent hear of melt Units: J/kg");
+          }
+          prm.leave_subsection();
 
-     prm.enter_subsection ("Melting Composition");
-     {
-        prm.declare_entry ("Cpx","-1",
-                           Patterns::Integer(),
-                           "The compositional field index of Cpx");
-        prm.declare_entry ("H2O","-1",
-                           Patterns::Integer(),
-                           "The compositional field index of H2O");
-        prm.declare_entry ("Default Cpx","0.15",
-                           Patterns::Double(),
-                           "The default Cpx concentration of Cpx if no compositoinal field is used");
-     }
-     prm.leave_subsection();
-     prm.enter_subsection ("Melting Data");
-     {
-        prm.declare_entry ("A1","1085.7",
-                           Patterns::Double (),
-                           "A1");
-        prm.declare_entry ("A2","132.9",
-                           Patterns::Double (),
-                           "A2");
-        prm.declare_entry ("A3","-5.1",
-                           Patterns::Double (),
-                           "A3");
-        prm.declare_entry ("B1","1475.0",
-                           Patterns::Double (),
-                           "B1");
-        prm.declare_entry ("B2","80.0",
-                           Patterns::Double (),
-                           "B2");
-        prm.declare_entry ("B3","-3.2",
-                           Patterns::Double (),
-                           "B3");
-        prm.declare_entry ("C1","1780.0",
-                           Patterns::Double (),
-                           "C1");
-        prm.declare_entry ("C2","45.0",
-                           Patterns::Double (),
-                           "C2");
-        prm.declare_entry ("C3","-2.0",
-                           Patterns::Double (),
-                           "C3");
-        prm.declare_entry ("r1","0.5",
-                           Patterns::Double (),
-                           "r1");
-        prm.declare_entry ("r2","0.08",
-                           Patterns::Double (),
-                           "r2");
-        prm.declare_entry ("beta1","1.50",
-                           Patterns::Double (),
-                           "beta1");
-        prm.declare_entry ("beta2","1.50",
-                           Patterns::Double (),
-                           "beta2");
-        prm.declare_entry ("K","43",
-                           Patterns::Double (),
-                           "K");
-        prm.declare_entry ("gamma","0.75",
-                           Patterns::Double (),
-                           "gamma");
-        prm.declare_entry ("D_H2O","0.01",
-                           Patterns::Double (),
-                           "D_H2O");
-        prm.declare_entry ("X1","12.0",
-                           Patterns::Double (),
-                           "X1");
-        prm.declare_entry ("X2","1.0",
-                           Patterns::Double (),
-                           "X2");        
-        prm.declare_entry ("lambda","0.60",
-                           Patterns::Double (),
-                           "lambda");
-        prm.declare_entry ("Cp","1000",
-                           Patterns::Double (),
-                           "Cp");
-        prm.declare_entry ("deltaS","300",
-                           Patterns::Double (),
-                           "deltaS");
-     }
-     prm.leave_subsection();
-		prm.enter_subsection("Steinberger model");
-		{
-		  prm.declare_entry ("Data directory", "data/material-model/steinberger/",
-							 Patterns::DirectoryName (),
-							 "The path to the model data. ");
-		  prm.declare_entry ("Material file names", "pyr-ringwood88.txt",
-							 Patterns::List (Patterns::Anything()),
-							 "The file names of the material data. "
-							 "List with as many components as active"
-							 "compositional fields (material data is assumed to"
-							 "be in order with the ordering of the fields). ");
-		  prm.declare_entry ("Bilinear interpolation", "true",
-							 Patterns::Bool (),
-							 "whether to use bilinear interpolation to compute "
-							 "material properties (slower but more accurate).");
-		  prm.declare_entry ("Latent heat", "false",
-							 Patterns::Bool (),
-							 "whether to include latent heat effects in the"
-							 "calculation of thermal expansivity and specific heat."
-							 "Following the approach of Nakagawa et al. 2009.");
-		  prm.leave_subsection();
-		}
+          prm.enter_subsection ("Melting Composition");
+          {
+            prm.declare_entry ("Cpx","-1",
+                Patterns::Integer(),
+                "The compositional field index of Cpx");
+            prm.declare_entry ("H2O","-1",
+                Patterns::Integer(),
+                "The compositional field index of H2O");
+            prm.declare_entry ("Default Cpx","0.15",
+                Patterns::Double(),
+                "The default Cpx concentration of Cpx if no compositoinal field is used");
+          }
+          prm.leave_subsection();
+          prm.enter_subsection ("Melting Data");
+          {
+            prm.declare_entry ("A1","1085.7",
+                Patterns::Double (),
+                "A1");
+            prm.declare_entry ("A2","132.9",
+                Patterns::Double (),
+                "A2");
+            prm.declare_entry ("A3","-5.1",
+                Patterns::Double (),
+                "A3");
+            prm.declare_entry ("B1","1475.0",
+                Patterns::Double (),
+                "B1");
+            prm.declare_entry ("B2","80.0",
+                Patterns::Double (),
+                "B2");
+            prm.declare_entry ("B3","-3.2",
+                Patterns::Double (),
+                "B3");
+            prm.declare_entry ("C1","1780.0",
+                Patterns::Double (),
+                "C1");
+            prm.declare_entry ("C2","45.0",
+                Patterns::Double (),
+                "C2");
+            prm.declare_entry ("C3","-2.0",
+                Patterns::Double (),
+                "C3");
+            prm.declare_entry ("r1","0.5",
+                Patterns::Double (),
+                "r1");
+            prm.declare_entry ("r2","0.08",
+                Patterns::Double (),
+                "r2");
+            prm.declare_entry ("beta1","1.50",
+                Patterns::Double (),
+                "beta1");
+            prm.declare_entry ("beta2","1.50",
+                Patterns::Double (),
+                "beta2");
+            prm.declare_entry ("K","43",
+                Patterns::Double (),
+                "K");
+            prm.declare_entry ("gamma","0.75",
+                Patterns::Double (),
+                "gamma");
+            prm.declare_entry ("D_H2O","0.01",
+                Patterns::Double (),
+                "D_H2O");
+            prm.declare_entry ("X1","12.0",
+                Patterns::Double (),
+                "X1");
+            prm.declare_entry ("X2","1.0",
+                Patterns::Double (),
+                "X2");        
+            prm.declare_entry ("lambda","0.60",
+                Patterns::Double (),
+                "lambda");
+            prm.declare_entry ("Cp","1000",
+                Patterns::Double (),
+                "Cp");
+            prm.declare_entry ("deltaS","300",
+                Patterns::Double (),
+                "deltaS");
+          }
+          prm.leave_subsection();
+          prm.enter_subsection("Steinberger model");
+          {
+            prm.declare_entry ("Data directory", "data/material-model/steinberger/",
+                Patterns::DirectoryName (),
+                "The path to the model data. ");
+            prm.declare_entry ("Material file names", "pyr-ringwood88.txt",
+                Patterns::List (Patterns::Anything()),
+                "The file names of the material data. "
+                "List with as many components as active"
+                "compositional fields (material data is assumed to"
+                "be in order with the ordering of the fields). ");
+            prm.declare_entry ("Bilinear interpolation", "true",
+                Patterns::Bool (),
+                "whether to use bilinear interpolation to compute "
+                "material properties (slower but more accurate).");
+            prm.declare_entry ("Latent heat", "false",
+                Patterns::Bool (),
+                "whether to include latent heat effects in the"
+                "calculation of thermal expansivity and specific heat."
+                "Following the approach of Nakagawa et al. 2009.");
+          }
+          prm.leave_subsection();
 
-     	}
+        }
         prm.leave_subsection();
       }
       prm.leave_subsection();
@@ -1335,131 +1282,109 @@ namespace aspect
           model_is_compressible = prm.get_bool ("Compressible");
           prm.enter_subsection ("Viscosity");
           {
-            viscosity_model      = prm.get ("Viscosity Model");
             reference_eta       = prm.get_double ("Reference Viscosity");
-            increase_lower_mantle   = prm.get_double ("Viscosity increase lower mantle");
             viscosity_cutoff_low  = prm.get_double ("Viscosity cutoff low");
             viscosity_cutoff_high = prm.get_double ("Viscosity cutoff high");
-            //yield_stress          = prm.get_double ("Yield stress");
-            //yield_stress_increase = prm.get_double ("Yield stress increase");
             exponential_melt      = prm.get_double ("Exponential Melt");
 
-			Assert (dynamic_cast<const GeometryModel::SphericalShell<dim>*>
+            Assert (dynamic_cast<const GeometryModel::SphericalShell<dim>*>
                    (&(this->get_geometry_model()))
                     != 0,
                     ExcMessage ("Scaled melting production from 2D to 3D can only be used if the geometry "
                                 "is a spherical shell."));
-            //earth_radius = (dynamic_cast<const GeometryModel::SphericalShell<dim>&> (this->get_geometry_model())).outer_radius();
-			//mantle_thickness = earth_radius - dynamic_cast<const GeometryModel::SphericalShell<dim>&> (this->get_geometry_model()).inner_radius();
-			//reference_dT = (this->get_boundary_temperature()).maximal_temperature()
-			//	             - (this->get_boundary_temperature()).minimal_temperature();
-			//std::cout<<earth_radius<<","<<mantle_thickness<<","<< reference_dT<<std::endl;
+            depth_lower           = prm.get_double ("Lower mantle depth");
+            density_difference    = Utilities::string_to_double(Utilities::split_string_list(prm.get("Density difference")));
+            viscosity_difference    = Utilities::string_to_double(Utilities::split_string_list(prm.get("Viscosity factor")));
+            
+            //Yield stress
+            is_yield_enable                     = prm.get_bool   ("Enable yield");
+            prm.enter_subsection ("Yield stress");
+            {
+              yield_stress_surface             = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield stress surface")));
+              yield_friction                   = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield friction")));
+              yield_composition_factor         = Utilities::string_to_double(Utilities::split_string_list(prm.get("Composition factor")));
+              yield_stress_max                 = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield stress max")));
+            }
+             prm.leave_subsection();
 
-			viscosity_factor_litho= prm.get_double ("Viscosity factor lithosphere");
-			viscosity_factor_trans= prm.get_double ("Viscosity factor transition zone");
-			viscosity_factor_lower= prm.get_double ("Viscosity factor lower mantle");
-			depth_litho           = prm.get_double ("Lithosphere depth");
-			depth_trans           = prm.get_double ("Transition zone depth");
-			depth_lower           = prm.get_double ("Lower mantle depth");
-      density_difference    = Utilities::string_to_double(Utilities::split_string_list(prm.get("Density difference")));
-      yield_stress          = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield stress")));
-      yield_stress_increase = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield stress increase")));
-      viscosity_difference    = Utilities::string_to_double(Utilities::split_string_list(prm.get("Viscosity factor")));
-      yield_factor            = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield stress factor")));
 
-			if (viscosity_model == "Exponential")
-              {
-                prm.enter_subsection ("Exponential");
-                {
-                  exponential_T         = prm.get_double ("Exponential T");
-                  exponential_P         = prm.get_double ("Exponential P");
-                  reference_dT          = prm.get_double ("Mantle Temperature Jump");
-                }
-                prm.leave_subsection();
-              }
-            if (viscosity_model == "Diffusion")
-              {
-                prm.enter_subsection ("Diffusion");
-                {
-                  activation_energy_diffusion_um   = prm.get_double ("Activation energy diffusion upper mantle");
-                  activation_volume_diffusion_um   = prm.get_double ("Activation volume diffusion upper mantle");
-                  prefactor_diffusion_um           = prm.get_double ("Prefactor diffusion upper mantle");
-                  activation_energy_diffusion_lm   = prm.get_double ("Activation energy diffusion lower mantle");
-                  activation_volume_diffusion_lm   = prm.get_double ("Activation volume diffusion lower mantle");
-                  prefactor_diffusion_lm           = prm.get_double ("Prefactor diffusion lower mantle");				  
-                }
-                prm.leave_subsection();
-              }
-            if (viscosity_model == "Dislocation")
-              {
-                prm.enter_subsection ("Dislocation");
-                {
-                  activation_energy_dislocation = prm.get_double ("Activation energy dislocation");
-                  activation_volume_dislocation = prm.get_double ("Activation volume dislocation");
-                  prefactor_dislocation         = prm.get_double ("Prefactor dislocation");
-                  stress_exponent                = prm.get_double ("Stress exponent");
-                }
-                prm.leave_subsection();
-              }
-            if (viscosity_model == "Composite")
-              {
-                prm.enter_subsection ("Composite");
-                {
-                  activation_energy_diffusion_um   = prm.get_double ("Activation energy diffusion upper mantle");
-                  activation_volume_diffusion_um   = prm.get_double ("Activation volume diffusion upper mantle");
-                  prefactor_diffusion_um           = prm.get_double ("Prefactor diffusion upper mantle");
-                  activation_energy_diffusion_lm   = prm.get_double ("Activation energy diffusion lower mantle");
-                  activation_volume_diffusion_lm   = prm.get_double ("Activation volume diffusion lower mantle");
-                  prefactor_diffusion_lm           = prm.get_double ("Prefactor diffusion lower mantle");
-                  activation_energy_dislocation    = prm.get_double ("Activation energy dislocation");
-                  activation_volume_dislocation    = prm.get_double ("Activation volume dislocation");
-                  prefactor_dislocation            = prm.get_double ("Prefactor dislocation");
-                  stress_exponent                  = prm.get_double ("Stress exponent");
-                }
-                prm.leave_subsection();
-              }
+            //Diffusion creep
+            is_diffusion_enable                = prm.get_bool   ("Enable diffusion");
+            prm.enter_subsection ("Diffusion creep");
+            {
+              activation_energy_diffusion_um   = prm.get_double ("E_UM");
+              activation_volume_diffusion_um   = prm.get_double ("V_UM");
+              prefactor_diffusion_um           = prm.get_double ("A_UM");
+            
+              activation_energy_diffusion_lm   = prm.get_double ("E_LM");
+              activation_volume_diffusion_lm   = prm.get_double ("V_LM");
+              prefactor_diffusion_lm           = prm.get_double ("A_LM");
+            }
+            prm.leave_subsection();
+            
+            //Dislocation Creep (Upper Mantle)
+            is_dislocation_enable            = prm.get_bool   ("Enable dislocation");
+            prm.enter_subsection ("Dislocation creep");
+            {
+              activation_energy_dislocation    = prm.get_double ("E");
+              activation_volume_dislocation    = prm.get_double ("V");
+              prefactor_dislocation            = prm.get_double ("A");
+              stress_exponent_dislocation      = prm.get_double ("n");
+            }
+            prm.leave_subsection();
+            
+            //Peierls Creep (Upper Mantle)
+            is_peierls_enable                = prm.get_bool   ("Enable peierls");
+            prm.enter_subsection ("Peierls creep");
+            {
+              activation_energy_peierls        = prm.get_double ("E");
+              activation_volume_peierls        = prm.get_double ("V");
+              prefactor_peierls                = prm.get_double ("A");
+              stress_exponent_peierls          = prm.get_double ("n");
+            }
+            prm.leave_subsection();
           }
           prm.leave_subsection();
-		  prm.enter_subsection ("Data");
-		  {
-			  solidus_filename=prm.get ("Solidus filename");
-			  liquidus_filename=prm.get ("Liquidus filename");
-			  Lh=prm.get_double ("Latent heat");
-		  }
-      prm.leave_subsection();
+          prm.enter_subsection ("Data");
+          {
+            solidus_filename=prm.get ("Solidus filename");
+            liquidus_filename=prm.get ("Liquidus filename");
+            Lh=prm.get_double ("Latent heat");
+          }
+          prm.leave_subsection();
 
-      prm.enter_subsection ("Melting Composition");
-      {
-        i_composition_Cpx = prm.get_integer("Cpx");
-        i_composition_H2O = prm.get_integer("H2O");
-        default_Cpx       = prm.get_double ("Default Cpx");
-      }
-      prm.leave_subsection();
-      prm.enter_subsection ("Melting Data");
-      {
-        melting_parameters.A1      = prm.get_double ("A1");
-        melting_parameters.A2      = prm.get_double ("A2");
-        melting_parameters.A3      = prm.get_double ("A3");
-        melting_parameters.B1      = prm.get_double ("B1");
-        melting_parameters.B2      = prm.get_double ("B2");
-        melting_parameters.B3      = prm.get_double ("B3");
-        melting_parameters.C1      = prm.get_double ("C1");
-        melting_parameters.C2      = prm.get_double ("C2");
-        melting_parameters.C3      = prm.get_double ("C3");
-        melting_parameters.r1      = prm.get_double ("r1");
-        melting_parameters.r2      = prm.get_double ("r2");
-        melting_parameters.beta1   = prm.get_double ("beta1");
-        melting_parameters.beta2   = prm.get_double ("beta2");
-        melting_parameters.K       = prm.get_double ("K");
-        melting_parameters.gamma   = prm.get_double ("gamma");
-        melting_parameters.D_H2O   = prm.get_double ("D_H2O");
-        melting_parameters.X1      = prm.get_double ("X1");
-        melting_parameters.X2      = prm.get_double ("X2");
-        melting_parameters.lambda  = prm.get_double ("lambda");
-        melting_parameters.Cp      = prm.get_double ("Cp");
-        melting_parameters.deltaS  = prm.get_double ("deltaS");
-      }
-		  prm.leave_subsection();
+          prm.enter_subsection ("Melting Composition");
+          {
+            i_composition_Cpx = prm.get_integer("Cpx");
+            i_composition_H2O = prm.get_integer("H2O");
+            default_Cpx       = prm.get_double ("Default Cpx");
+          }
+          prm.leave_subsection();
+          prm.enter_subsection ("Melting Data");
+          {
+            melting_parameters.A1      = prm.get_double ("A1");
+            melting_parameters.A2      = prm.get_double ("A2");
+            melting_parameters.A3      = prm.get_double ("A3");
+            melting_parameters.B1      = prm.get_double ("B1");
+            melting_parameters.B2      = prm.get_double ("B2");
+            melting_parameters.B3      = prm.get_double ("B3");
+            melting_parameters.C1      = prm.get_double ("C1");
+            melting_parameters.C2      = prm.get_double ("C2");
+            melting_parameters.C3      = prm.get_double ("C3");
+            melting_parameters.r1      = prm.get_double ("r1");
+            melting_parameters.r2      = prm.get_double ("r2");
+            melting_parameters.beta1   = prm.get_double ("beta1");
+            melting_parameters.beta2   = prm.get_double ("beta2");
+            melting_parameters.K       = prm.get_double ("K");
+            melting_parameters.gamma   = prm.get_double ("gamma");
+            melting_parameters.D_H2O   = prm.get_double ("D_H2O");
+            melting_parameters.X1      = prm.get_double ("X1");
+            melting_parameters.X2      = prm.get_double ("X2");
+            melting_parameters.lambda  = prm.get_double ("lambda");
+            melting_parameters.Cp      = prm.get_double ("Cp");
+            melting_parameters.deltaS  = prm.get_double ("deltaS");
+          }
+          prm.leave_subsection();
         prm.enter_subsection("Steinberger model");
         {
           datadirectory        = prm.get ("Data directory");

@@ -353,8 +353,14 @@ namespace aspect
 		initialize();
 
 		aspect::melting::Melting_data Data_Melt;
+    
+    double get_viscosity_diffusion_inverse   (double temperature, double pressure, double depth) const;
+    double get_viscosity_dislocation_inverse (double temperature, double pressure, double strain_rate_II, double depth) const;
+    double get_viscosity_yield_inverse       (double pressure, const std::vector<double> &compositional_fields,double strain_rate_II, double depth) const;
+    double get_viscosity_peierls_inverse     (double temperature, double pressure, double strain_rate_II, double depth) const;
 
       private:
+    static const double R_gas = 8.341; //Gas constant.
     struct Melt_Katz::Parameters melting_parameters;
     int i_composition_Cpx;
     int i_composition_H2O;
@@ -370,41 +376,41 @@ namespace aspect
     bool compute_phases;
     bool model_is_compressible;
 
-    std::string viscosity_model;
     double reference_eta;
-    double exponential_T;
-    double exponential_P;
 		double exponential_melt;
-		double viscosity_factor_litho;
-		double viscosity_factor_trans;
-		double viscosity_factor_lower;
-    double depth_litho;
-		double depth_trans;
 		double depth_lower;
 		double viscosity_cutoff_low;
 		double viscosity_cutoff_high;
-		//double yield_stress;
-    //double yield_stress_increase;
-    double reference_dT;
-		double mantle_thickness;
-		double earth_radius;
-    std::vector<double> yield_stress;
-    std::vector<double> yield_stress_increase;
     std::vector<double> density_difference;
     std::vector<double> viscosity_difference;
-    std::vector<double> yield_factor;
+    
+    bool                is_yield_enable;
+    bool                is_yield_dependent_on_composition;
+    std::vector<double> yield_stress_surface;
+    std::vector<double> yield_friction;
+    std::vector<double> yield_composition_factor;
+    std::vector<double> yield_stress_max;
 
-		double increase_lower_mantle;
+    bool   is_diffusion_enable;
     double activation_energy_diffusion_um;
     double activation_volume_diffusion_um;
     double prefactor_diffusion_um;
     double activation_energy_diffusion_lm;
     double activation_volume_diffusion_lm;
     double prefactor_diffusion_lm;        
+    
+    bool   is_dislocation_enable;
     double activation_energy_dislocation;
     double activation_volume_dislocation;
     double prefactor_dislocation;
-    double stress_exponent;
+    double stress_exponent_dislocation;
+
+    bool   is_peierls_enable;
+    double activation_energy_peierls;
+    double activation_volume_peierls;
+    double prefactor_peierls;
+    double stress_exponent_peierls;
+
 
     double k_value;
 		std::string solidus_filename;
@@ -418,6 +424,7 @@ namespace aspect
     unsigned int n_material_data;
     std::vector<std_cxx1x::shared_ptr<internal::MaterialLookup> > material_lookup;
 		double get_deltat (const Point<dim> &position) const;
+    double get_viscosity_arrhenius (double temperature, double pressure, double strain_rate_II, double A, double E, double V, double n) const;
 		
     };
   }
