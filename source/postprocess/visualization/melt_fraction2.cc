@@ -21,7 +21,7 @@
 
 #include <aspect/postprocess/visualization/melt_fraction2.h>
 #include <aspect/simulator_access.h>
-#include <aspect/material_model/new_melt.h>
+#include <aspect/material_model/melt.h>
 
 #include <deal.II/numerics/data_out.h>
 

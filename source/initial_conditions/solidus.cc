@@ -25,7 +25,6 @@
 #include <aspect/geometry_model/spherical_shell.h>
 #include <aspect/boundary_temperature/interface.h>
 #include <boost/math/special_functions/spherical_harmonic.hpp>
-#include <aspect/simulator.h>
 
 namespace aspect
 {
@@ -199,10 +198,7 @@ namespace aspect
       T_solidus+=T_perturbation;
 
       //cout<<Depth<<","<<T_solidus<<endl;
-      if(compressible)
-        return T_solidus;
-      else
-        return T_solidus-this->get_adiabatic_surface_temperature()+this->get_adiabatic_conditions().temperature(position);
+      return T_solidus;
     }
 
 
@@ -244,10 +240,7 @@ namespace aspect
                              "The thickness of lithosphere thickness. Units: m");
           prm.declare_entry ("Bottom layer thickness","0",
                              Patterns::Double (0),
-                             "The thickness of bottom layer thickness. Units: m");
-          prm.declare_entry ("Compressible","true",
-                             Patterns::Bool(),
-                             "If the model is compressible");
+                             "The thickness of bottom layer thickness. Units: m");          
           prm.enter_subsection("Perturbation");
           {
             prm.declare_entry ("Temperature amplitude", "0e0",
@@ -315,7 +308,6 @@ namespace aspect
           deltaT=prm.get_double("Supersolidus");
           litho_thick=prm.get_double("Lithosphere thickness");
           bottom_thick=prm.get_double("Bottom layer thickness");
-          compressible=prm.get_bool("Compressible");
           prm.enter_subsection("Perturbation");
           {
             magnitude_T    = prm.get_double("Temperature amplitude");

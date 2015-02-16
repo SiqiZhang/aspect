@@ -85,8 +85,6 @@ namespace aspect
         density_depends_on (const NonlinearDependence::Dependence dependence) const;
 
 
-
-
         /**
          * @name Auxiliary material properties used for postprocessing
          * @{
