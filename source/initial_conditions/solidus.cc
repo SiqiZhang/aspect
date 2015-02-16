@@ -198,7 +198,10 @@ namespace aspect
       T_solidus+=T_perturbation;
 
       //cout<<Depth<<","<<T_solidus<<endl;
-      return T_solidus;
+      if(compressible)
+        return T_solidus;
+      else
+        return T_solidus+this->get_adiabatic_surface_temperature()-this->get_adiabatic_conditions().temperature(position);
     }
 
 
