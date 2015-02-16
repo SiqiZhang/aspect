@@ -182,7 +182,6 @@ namespace aspect
         p2(0)=spherical_geometry_model->R0-bottom_depth_theta;
         T_litho  = this->get_adiabatic_conditions().temperature(p1);
         T_bottom = this->get_adiabatic_conditions().temperature(p2);
-
       }
 
       if (litho_depth_theta>0 && Depth<litho_depth_theta)
