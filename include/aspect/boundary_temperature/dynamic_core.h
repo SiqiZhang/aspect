@@ -180,6 +180,21 @@ namespace aspect
         double outer_temperature;
 
         /**
+         * Initial CMB temperature changing rate
+         */
+        double init_dT_dt;
+
+        /**
+         * Initial inner core radius changing rate
+         */
+        double init_dR_dt;
+
+        /**
+         * Initial light composition changing rate
+         */
+        double init_dX_dt;
+
+        /**
          * Flag for determine the initial call for update().
          */
         bool is_first_call;

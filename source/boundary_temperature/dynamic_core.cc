@@ -98,6 +98,15 @@ namespace aspect
                              Patterns::Double (),
                              "Temperature at the inner boundary (core mantle boundary) at the "
                              "beginning. Units: K.");
+          prm.declare_entry ("dT_dt", "0",
+                             Patterns::Double (),
+                             "Initial CMB temperature changing rate. Units: K/s");
+          prm.declare_entry ("dR_dt", "0",
+                             Patterns::Double (),
+                             "Initial inner core radius changing rate. Units: m/s");
+          prm.declare_entry ("dX_dt", "0",
+                             Patterns::Double (),
+                             "Initial light composition changing rate. Units: 1/s");      
           prm.declare_entry ("Core density", "12.5e3",
                              Patterns::Double (),
                              "Density of the core. Units: kg/m^3");
@@ -200,11 +209,10 @@ namespace aspect
         {
           inner_temperature = prm.get_double ("Inner temperature");
           outer_temperature = prm.get_double ("Outer temperature");
-<<<<<<< HEAD
+          init_dT_dt        = prm.get_double ("dT_dt") / year_in_seconds;
+          init_dR_dt        = prm.get_double ("dR_dt") / year_in_seconds;
+          init_dX_dt        = prm.get_double ("dX_dt") / year_in_seconds;
           Rho_cen           = prm.get_double ("Core density");
-=======
-          Rho_cen              = prm.get_double ("Core density");
->>>>>>> change scale 2d to 3d into postprocessor and minor bugfix
           g                 = prm.get_double ("Gravity acceleration");
           P_CMB             = prm.get_double ("CMB pressure");
           X_init            = prm.get_double ("Initial light composition");
@@ -558,9 +566,9 @@ namespace aspect
             core_data.Xi=get_X(core_data.Ri);
             core_data.Q=0.;
             core_data.dt=0.;
-            core_data.dT_dt=0.;
-            core_data.dR_dt=0.;
-            core_data.dX_dt=0.;
+            core_data.dT_dt=init_dT_dt;
+            core_data.dR_dt=init_dR_dt;
+            core_data.dX_dt=init_dX_dt;
 
             is_first_call=false;
 
