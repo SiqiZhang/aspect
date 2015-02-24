@@ -722,6 +722,7 @@ namespace aspect
          p = traction_boundary_conditions.begin();
          p != traction_boundary_conditions.end(); ++p)
       p->second->update ();
+    pcout<<"   Time step initialized."<<std::endl;
   }
 
 
@@ -863,6 +864,7 @@ namespace aspect
     signals.post_constraints_creation(*this, current_constraints);
 
     current_constraints.close();
+    pcout<<"   Constraints updated."<<std::endl;
   }
 
 
