@@ -276,18 +276,7 @@ namespace aspect
            statistics.set_precision (name7, 2);
            statistics.set_scientific (name7, false);
 
-
-
-          // finally have something for the screen
-          screen_text.precision(6);
-          screen_text <<core_data->Ti <<" K,"
-                      <<core_data->Ri*1e-3<<" km,"
-                      <<core_data->dT_dt*year_in_seconds<<" K/year,"
-                      <<core_data->dR_dt*year_in_seconds<<" m/year,"
-                      <<core_data->dX_dt*year_in_seconds<<" 1/year";
-
-
-      return std::pair<std::string, std::string> ("Core data (Q_CMB/Q_surface/Tc/Ri/dT_dt/dR_dt/dX_dt)",
+      return std::pair<std::string, std::string> ("Core data (Q_CMB/Q_surface)",
                                                   screen_text.str());
     }
   }

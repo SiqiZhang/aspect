@@ -100,13 +100,13 @@ namespace aspect
                              "beginning. Units: K.");
           prm.declare_entry ("dT_dt", "0",
                              Patterns::Double (),
-                             "Initial CMB temperature changing rate. Units: K/s");
+                             "Initial CMB temperature changing rate. Units: K/year");
           prm.declare_entry ("dR_dt", "0",
                              Patterns::Double (),
-                             "Initial inner core radius changing rate. Units: m/s");
+                             "Initial inner core radius changing rate. Units: km/year");
           prm.declare_entry ("dX_dt", "0",
                              Patterns::Double (),
-                             "Initial light composition changing rate. Units: 1/s");      
+                             "Initial light composition changing rate. Units: 1/year");      
           prm.declare_entry ("Core density", "12.5e3",
                              Patterns::Double (),
                              "Density of the core. Units: kg/m^3");
@@ -210,7 +210,7 @@ namespace aspect
           inner_temperature = prm.get_double ("Inner temperature");
           outer_temperature = prm.get_double ("Outer temperature");
           init_dT_dt        = prm.get_double ("dT_dt") / year_in_seconds;
-          init_dR_dt        = prm.get_double ("dR_dt") / year_in_seconds;
+          init_dR_dt        = prm.get_double ("dR_dt") / year_in_seconds * 1.e3;
           init_dX_dt        = prm.get_double ("dX_dt") / year_in_seconds;
           Rho_cen           = prm.get_double ("Core density");
           g                 = prm.get_double ("Gravity acceleration");
@@ -351,12 +351,13 @@ namespace aspect
             // If solution is out of the interval, then something is wrong. 
             if(dT0*dT2>0)
             {
-              std::cout<<"Step: "<<steps<<std::endl
-                <<" X=["<<X_0<<","<<X_2<<"]"
-                <<" T=["<<T_0<<","<<T_2<<"]"<<"(K)"
-                <<" R=["<<R_0/1e3<<","<<R_2/1e3<<"]"<<"(km)"
-                <<std::endl;
-              std::cout<<core_data.Q<<std::endl;
+              const ConditionalOStream &pcout=this->get_pcout();
+              pcout<<"Step: "<<steps<<std::endl
+                   <<" X=["<<X_0<<","<<X_2<<"]"
+                   <<" T=["<<T_0<<","<<T_2<<"]"<<"(K)"
+                   <<" R=["<<R_0/1e3<<","<<R_2/1e3<<"]"<<"(km)"
+                   <<std::endl;
+              pcout<<core_data.Q<<std::endl;
               AssertThrow(dT0*dT2<=0,ExcMessage("No single solution for inner core!"));
             }
             // Get the middle point of the interval
@@ -453,8 +454,9 @@ namespace aspect
             {
               if((Q0-Q)*(Q2-Q)>0)
               {
+                const ConditionalOStream &pcout=this->get_pcout();
                 // If no solution in the interval, something is wrong.
-                std::cout<<"T="<<T<<",Q="<<Q<<",R0="<<R0<<",R2="<<R2<<std::endl;
+                pcout<<"T="<<T<<",Q="<<Q<<",R0="<<R0<<",R2="<<R2<<std::endl;
                 AssertThrow((Q0-Q)*(Q2-Q)<=0,ExcMessage("No single solution for core radius!"));
               }
                 R1=(R0+R2)/2.;
@@ -595,6 +597,14 @@ namespace aspect
             inner_temperature=T1;
         }
         update_core_data();
+        const ConditionalOStream &pcout=this->get_pcout();
+        pcout<<std::setiosflags(std::ios::left);
+        pcout<<"   Dynamic core data updated."<<std::endl;
+        pcout<<"     "<<std::setw(15)<<"Tc(K)"<<std::setw(15)<<"Ri(km)"<<std::setw(15)<<"Xi"
+            <<std::setw(15)<<"dT/dt(K/year)"<<std::setw(15)<<"dR/dt(km/year)"<<std::setw(15)<<"dX/dt(1/year)"<<std::endl;
+        pcout<<"     "<<std::setprecision(6)<<std::setw(15)<<core_data.Ti<<std::setw(15)<<core_data.Ri/1.e3<<std::setw(15)<<core_data.Xi
+            <<std::setw(15)<<core_data.dT_dt*year_in_seconds<<std::setw(15)<<core_data.Ri/1.e3*year_in_seconds
+            <<std::setw(15)<<core_data.dX_dt*year_in_seconds<<std::endl;
     }
     template <int dim>
     double
@@ -653,7 +663,8 @@ namespace aspect
                 if(fabs(dr)<r_error)
                     return r0;
             }
-            std::cout<<"p="<<p<<",r0="<<r_ini<<",r="<<r0<<std::endl;
+            const ConditionalOStream &pcout=this->get_pcout();
+            pcout<<"p="<<p<<",r0="<<r_ini<<",r="<<r0<<std::endl;
             AssertThrow(fabs(dr)<r_error,ExcMessage("Get r from pressure not converge!"));
         }
         return 0.;
