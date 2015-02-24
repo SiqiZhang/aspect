@@ -351,12 +351,12 @@ namespace aspect
             // If solution is out of the interval, then something is wrong. 
             if(dT0*dT2>0)
             {
-              cout<<"Step: "<<steps<<endl
+              std::cout<<"Step: "<<steps<<std::endl
                 <<" X=["<<X_0<<","<<X_2<<"]"
                 <<" T=["<<T_0<<","<<T_2<<"]"<<"(K)"
                 <<" R=["<<R_0/1e3<<","<<R_2/1e3<<"]"<<"(km)"
-                <<endl;
-              cout<<core_data.Q<<endl;
+                <<std::endl;
+              std::cout<<core_data.Q<<std::endl;
               AssertThrow(dT0*dT2<=0,ExcMessage("No single solution for inner core!"));
             }
             // Get the middle point of the interval
@@ -454,7 +454,7 @@ namespace aspect
               if((Q0-Q)*(Q2-Q)>0)
               {
                 // If no solution in the interval, something is wrong.
-                cout<<"T="<<T<<",Q="<<Q<<",R0="<<R0<<",R2="<<R2<<endl;
+                std::cout<<"T="<<T<<",Q="<<Q<<",R0="<<R0<<",R2="<<R2<<std::endl;
                 AssertThrow((Q0-Q)*(Q2-Q)<=0,ExcMessage("No single solution for core radius!"));
               }
                 R1=(R0+R2)/2.;
@@ -653,7 +653,7 @@ namespace aspect
                 if(fabs(dr)<r_error)
                     return r0;
             }
-            cout<<"p="<<p<<",r0="<<r_ini<<",r="<<r0<<endl;
+            std::cout<<"p="<<p<<",r0="<<r_ini<<",r="<<r0<<std::endl;
             AssertThrow(fabs(dr)<r_error,ExcMessage("Get r from pressure not converge!"));
         }
         return 0.;
