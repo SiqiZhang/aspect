@@ -326,7 +326,6 @@ namespace aspect
             // to $ASPECT_SOURCE_DIR, replace it by what CMake has given us
             // as a #define
             solidus_filename = prm.get ("Solidus filename");
-            /*
             {
               const std::string      subst_text = "$ASPECT_SOURCE_DIR";
               std::string::size_type position;
@@ -334,7 +333,7 @@ namespace aspect
                 solidus_filename.replace (solidus_filename.begin()+position,
                                           solidus_filename.begin()+position+subst_text.size(),
                                           ASPECT_SOURCE_DIR);
-            }*/
+            }
 
             // then actually read the file
             solidus_curve.read(solidus_filename);

@@ -726,7 +726,24 @@ namespace aspect
           prm.enter_subsection ("Data");
           {
             solidus_filename=prm.get ("Solidus filename");
+            {
+              const std::string      subst_text = "$ASPECT_SOURCE_DIR";
+              std::string::size_type position;
+              while (position = solidus_filename.find (subst_text),  position!=std::string::npos)
+                solidus_filename.replace (solidus_filename.begin()+position,
+                    solidus_filename.begin()+position+subst_text.size(),
+                    ASPECT_SOURCE_DIR);
+            }            
             liquidus_filename=prm.get ("Liquidus filename");
+            {
+              const std::string      subst_text = "$ASPECT_SOURCE_DIR";
+              std::string::size_type position;
+              while (position = liquidus_filename.find (subst_text),  position!=std::string::npos)
+                liquidus_filename.replace (liquidus_filename.begin()+position,
+                    liquidus_filename.begin()+position+subst_text.size(),
+                    ASPECT_SOURCE_DIR);
+            }
+
             Lh=prm.get_double ("Latent heat");
           }
           prm.leave_subsection();
