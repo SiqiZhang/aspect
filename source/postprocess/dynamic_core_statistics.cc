@@ -142,12 +142,24 @@ namespace aspect
                   {
                     const double thermal_conductivity
                       = out.thermal_conductivities[q];
+                    double adiabatic_flux=0.;
+                    if(this->get_material_model().is_compressible()==false)
+                    {
+                      const double alpha = out.thermal_expansion_coefficients[q];
+                      const double cp = out.specific_heat[0];
+                      const double gravity = this->get_gravity_model().gravity_vector(in.position[q]).norm();
+                      if(cell->face(f)->boundary_indicator()==0)
+                        adiabatic_flux = - alpha * gravity / cp;
+                      else if(cell->face(f)->boundary_indicator()==1)
+                        adiabatic_flux = alpha * gravity / cp;
+                    }
+
 
                     local_normal_flux
                     +=
                       -thermal_conductivity *
-                      (temperature_gradients[q] *
-                       fe_face_values.normal_vector(q)) *
+                      (temperature_gradients[q] * fe_face_values.normal_vector(q) 
+                       + adiabatic_flux) *
                       fe_face_values.JxW(q);
                   }
 
