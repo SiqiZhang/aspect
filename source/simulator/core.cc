@@ -155,7 +155,7 @@ namespace aspect
 
     //Fourth order mapping doesn't really make sense for free surface
     //calculations (we disable curved boundaries) or we we only have straight
-    //boundaries. So we either pick MappingQ(4,true) or MappingQ(1,false)
+    //boundaries
     mapping (
       (parameters.free_surface_enabled
        ||
