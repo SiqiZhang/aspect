@@ -182,6 +182,14 @@ namespace aspect
         T_litho  = this->get_adiabatic_conditions().temperature(p1);
         T_bottom = this->get_adiabatic_conditions().temperature(p2);
       }
+      if(!compressible)
+      {
+        Point<dim> p1,p2;
+        p1(0)=spherical_geometry_model->R1-litho_depth_theta;
+        p2(0)=spherical_geometry_model->R0-bottom_depth_theta;
+        T_litho-=this->get_adiabatic_conditions().temperature(p1)-this->get_adiabatic_surface_temperature();
+        T_bottom-=this->get_adiabatic_conditions().temperature(p2)-this->get_adiabatic_surface_temperature();
+      }
 
       if (litho_depth_theta>0 && Depth<litho_depth_theta)
         T_solidus=T_min+(T_litho-T_min)*(Depth/litho_depth_theta);
@@ -193,15 +201,17 @@ namespace aspect
           T_solidus=solidus_curve.T(0,sqrt(position.square()))+deltaT;
         else
           T_solidus=this->get_adiabatic_conditions().temperature(position);
+        if(!compressible)
+          T_solidus-=this->get_adiabatic_conditions().temperature(position)-this->get_adiabatic_surface_temperature();
       }
       T_perturbation=pow(0.5,(1.0-Depth/( this->get_geometry_model().maximal_depth()))/0.1 )*magnitude_T*lateral_perturbation;
       T_solidus+=T_perturbation;
 
       //cout<<Depth<<","<<T_solidus<<endl;
-      if(compressible)
+      //if(compressible)
         return T_solidus;
-      else
-        return T_solidus+this->get_adiabatic_surface_temperature()-this->get_adiabatic_conditions().temperature(position);
+     // else
+     //   return T_solidus+this->get_adiabatic_surface_temperature()-this->get_adiabatic_conditions().temperature(position);
     }
 
 
