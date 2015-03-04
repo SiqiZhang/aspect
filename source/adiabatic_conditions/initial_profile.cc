@@ -103,6 +103,14 @@ namespace aspect
 
           pressures[i] = pressures[i-1]
                          + density * gravity * delta_z;
+          if(density * gravity * delta_z < 0.)
+          {
+            const ConditionalOStream &pcout=this->get_pcout();
+            pcout<<i<<" density:"<<density
+                    <<" gravity:"<<gravity
+                    <<" delta_z:"<<delta_z;
+            AssertThrow(density * gravity * delta_z >= 0.,ExcMessage("Adiabatic Pressure gradiant negative!"));
+          }
           temperatures[i] = temperatures[i-1] * (1 +
                                                  alpha * gravity * delta_z * one_over_cp);
         }

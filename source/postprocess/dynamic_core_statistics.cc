@@ -217,7 +217,7 @@ namespace aspect
           // also make sure that the other columns filled by the this object
           // all show up with sufficient accuracy and in scientific notation
           statistics.set_precision (name, 4);
-          statistics.set_scientific (name, false);
+          statistics.set_scientific (name, true);
 
           // finally have something for the screen
           screen_text.precision(3);
