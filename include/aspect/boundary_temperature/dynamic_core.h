@@ -337,6 +337,11 @@ namespace aspect
         int max_steps;
 
         /**
+         * Temperature correction value for adiabatic
+         */
+        double dTa;
+
+        /**
          * Getting the energy partition factor a 
          * (between core cooling and inner core growth)
          * from given inner core radius

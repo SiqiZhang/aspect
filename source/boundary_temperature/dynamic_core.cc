@@ -546,7 +546,7 @@ namespace aspect
     Dynamic_core<dim>::update()
     {
         const Postprocess::DynamicCoreStatistics<dim> * dynamic_core_statistics
-          = this->template find_postprocessor<const Postprocess::DynamicCoreStatistics<dim> >();
+            = this->template find_postprocessor<const Postprocess::DynamicCoreStatistics<dim> >();
         AssertThrow(dynamic_core_statistics!=NULL,
             ExcMessage ("Dynamic core boundary condition has to work with dynamic core statistics postprocessor."));
         core_data.Q=dynamic_core_statistics->get_CMB_heat_flux();
@@ -554,17 +554,28 @@ namespace aspect
         core_data.H=get_radioheating_rate();
         if(is_first_call==true)
         {
-            const GeometryModel::SphericalShell<dim>* shperical_shell_geometry =
-                dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&(this->get_geometry_model()));
-            AssertThrow (shperical_shell_geometry != NULL,
-                    ExcMessage ("This boundary model is only implemented if the geometry is "
-                                "in fact a spherical shell."));
-            Rc=shperical_shell_geometry->R0;
+          const GeometryModel::SphericalShell<dim>* spherical_shell_geometry =
+              dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&(this->get_geometry_model()));
+          AssertThrow (spherical_shell_geometry != NULL,
+              ExcMessage ("This boundary model is only implemented if the geometry is "
+                          "in fact a spherical shell."));
+            Rc=spherical_shell_geometry->R0;
             Mc=get_Mass(Rc);
             P_Core=get_Pressure(0);
 
-            core_data.Ti=inner_temperature;
-            core_data.Ri=get_Ri(X_init,inner_temperature,0);
+            // Calculate the temperature fix for adiabatic
+            if(this->get_adiabatic_conditions().is_initialized() && !this->include_adiabatic_heating())
+            {
+              Point<dim> p1;
+              p1(0) = spherical_shell_geometry->R0;
+              dTa = this->get_adiabatic_conditions().temperature(p1)
+                  - this->get_adiabatic_surface_temperature();
+            }
+            else
+              dTa = 0.;
+
+            core_data.Ti=inner_temperature + dTa;
+            core_data.Ri=get_Ri(X_init,core_data.Ti,0);
             core_data.Xi=get_X(core_data.Ri);
             core_data.Q=0.;
             core_data.dt=0.;
@@ -594,7 +605,7 @@ namespace aspect
             core_data.Xi=X1;
             core_data.Ri=R1;
             core_data.Ti=T1;
-            inner_temperature=T1;
+            inner_temperature = T1 - dTa;
         }
         update_core_data();
         const ConditionalOStream &pcout=this->get_pcout();
