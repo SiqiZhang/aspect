@@ -196,6 +196,13 @@ namespace aspect
     std::set<types::boundary_id> tangential_velocity_boundary_indicators;
 
     /**
+     * Impact events
+     */
+    bool                           include_impacts;
+    std::string                    Impacts_datafile;
+    
+    
+    /**
      * Map from boundary id to a pair "components", "velocity boundary type",
      * where components is of the format "[x][y][z]" and the velocity type is
      * mapped to one of the plugins of velocity boundary conditions (e.g.

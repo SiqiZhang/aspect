@@ -61,6 +61,7 @@
 #include <boost/iostreams/tee.hpp>
 #include <boost/iostreams/stream.hpp>
 
+#include <aspect/impact.h>
 
 namespace aspect
 {
@@ -1451,6 +1452,12 @@ namespace aspect
       std_cxx11::shared_ptr<FreeSurfaceHandler> free_surface;
 
 
+      /**
+       * Impact events
+       */
+      void set_impacts();
+      ImpactFunction<dim> impacts;
+      
       /**
        * Change compositional field due to depletaion
        */

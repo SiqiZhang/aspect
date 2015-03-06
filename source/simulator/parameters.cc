@@ -291,6 +291,17 @@ namespace aspect
     // to indicate a boundary
     prm.enter_subsection ("Model settings");
     {
+      prm.declare_entry ("Enable Impacts","false",
+                         Patterns::Bool (),
+                         "Whether to enable the impact events which alter the temperature through time");
+      prm.enter_subsection ("Impacts");
+      {
+          prm.declare_entry ("Data file","",
+                             Patterns::Anything (),
+                             "The data for impact events data, in the following format: "
+                             "Time(Ma) Lon(degree) Lat(degree) Radius(km) Velocity(km/s)");
+      }
+      prm.leave_subsection();
       prm.declare_entry ("Fixed temperature boundary indicators", "",
                          Patterns::List (Patterns::Anything()),
                          "A comma separated list of names denoting those boundaries "
@@ -816,6 +827,13 @@ namespace aspect
 
     prm.enter_subsection ("Model settings");
     {
+      include_impacts=prm.get_bool("Enable Impacts");
+      prm.enter_subsection("Impacts");
+      {
+        Impacts_datafile=prm.get("Data file");
+      }
+      prm.leave_subsection();
+
       {
         nullspace_removal = NullspaceRemoval::none;
         std::vector<std::string> nullspace_names =

@@ -53,6 +53,8 @@
 #include <locale>
 #include <string>
 
+#include <aspect/geometry_model/spherical_shell.h>
+#include <aspect/impact.h>
 
 using namespace dealii;
 
@@ -172,7 +174,8 @@ namespace aspect
     dof_handler (triangulation),
 
     rebuild_stokes_matrix (true),
-    rebuild_stokes_preconditioner (true)
+    rebuild_stokes_preconditioner (true),
+    impacts()
   {
     // FE data is no longer needed because we constructed finite_element above
     introspection.free_finite_element_data();
@@ -2027,6 +2030,16 @@ namespace aspect
 
         computing_timer.exit_section();
       }
+    // start the principal loop over time steps:
+    if(parameters.include_impacts)
+    {
+      const GeometryModel::SphericalShell<dim>* spherical_shell_geometry =
+            dynamic_cast<const GeometryModel::SphericalShell<dim>*> (geometry_model.get());
+      AssertThrow (spherical_shell_geometry != NULL,
+              ExcMessage ("This boundary model is only implemented if the geometry is "
+                                "in fact a spherical shell."));
+      impacts.Initialize(parameters.Impacts_datafile, parameters.start_time,spherical_shell_geometry->R1);
+    }
 
     // start the principal loop over time steps:
     do
@@ -2037,6 +2050,13 @@ namespace aspect
         solve_timestep ();
 
         pcout << std::endl;
+
+        //Putting the impacts into solution.
+        if(parameters.include_impacts)
+        {
+          impacts.update_time(time);
+          set_impacts();
+        }
 
         // update the time step size
         // for now the bool (convection/conduction dominated)
