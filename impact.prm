@@ -1,0 +1,185 @@
+set Adiabatic surface temperature          = 1600   
+set CFL number                             = 0.9    
+set Dimension                              = 2
+set End time                               = 300e6  
+set Linear solver tolerance                = 1e-6    
+set Nonlinear solver scheme                = IMPES
+set Number of cheap Stokes solver steps    = 0        
+set Output directory                       = impact
+set Resume computation                     = false
+set Start time                             = 200e6 
+set Surface pressure                       = 1.0e5  
+set Use years in output instead of seconds = true
+
+
+
+subsection Boundary temperature model
+  set Model name = spherical constant
+  subsection Spherical constant
+    set Inner temperature = 2400 
+   set Outer temperature = 253   
+  end
+end
+
+
+
+subsection Checkpointing
+  # The wall time between performing checkpoints. If 0, will use the
+  # checkpoint step frequency instead. Units: Seconds.
+  set Time between checkpoint  = 600
+end
+
+subsection Discretization
+
+  subsection Stabilization parameters
+    set beta  = 0.12 # default: 0.078
+    set cR    = 0.4  # default: 0.33
+  end
+
+end
+
+subsection Geometry model
+  set Model name = spherical shell # default: 
+
+  subsection Spherical shell
+    set Inner radius              = 1700e3 
+    set Outer radius              = 3385e3 
+  end
+
+end
+
+
+subsection Gravity model
+  set Model name = radial constant 
+  subsection Radial constant
+    set Magnitude = 3.7
+  end
+end
+
+subsection Initial conditions
+  set Model name = solidus # default: 
+  subsection Solidus
+    set Bottom layer thickness = 200e3  
+    set Compressible           = true   
+    set Lithosphere thickness  = 100.0e3 
+    subsection Perturbation
+      set Bottom layer amplitude          = 100e3 
+      set Lateral wave number one         = 12    
+      set Lateral wave number two         = 6     
+      set Lithosphere thickness amplitude = 80e3  
+    end
+
+  end
+end
+
+
+subsection Material model
+  set Model name = melt 
+  subsection Melt model
+    subsection Melting Composition
+      set Cpx         = -1
+      set Default Cpx = 0.15
+      set H2O         = -1
+    end
+    subsection Viscosity
+      set Enable diffusion      = true   
+      set Enable yield          = true
+      set Enable dislocation    = true  
+      set Enable peierls        = true
+
+      set Lower mantle depth    = 660e3
+      set Viscosity cutoff high = 1e22 #1e24
+      set Viscosity cutoff low  = 1e22 #5e19
+      subsection Diffusion creep
+        set A_LM = 2.0e-16  
+        set A_UM = 3.0e-11 
+        set E_LM = 200e3    
+        set E_UM = 300e3    
+        set V_LM = 1.5e-6   
+        set V_UM = 4e-6   
+      end
+      subsection Dislocation creep
+        set A = 5.0e-16 
+        set E = 540e3   
+        set V = 12e-6   
+        set n = 3.5
+      end
+      subsection Peierls creep
+        set A = 1e-150 
+        set E = 540e3  
+        set V = 10e-6  
+        set n = 20     
+      end
+      subsection Yield stress
+        set Yield friction           = 0.15  
+        set Yield stress max         = 10e9
+        set Yield stress surface     = 5e6  
+      end
+    end
+  end
+
+  subsection Steinberger model
+    set Compressible                                  = true
+    set Reference viscosity                           = 1e21  
+    set Use lateral average temperature for viscosity = false
+  end
+end
+
+
+subsection Mesh refinement
+  set Additional refinement times              = 0     
+  set Coarsening fraction                      = 0     
+  set Initial adaptive refinement              = 0    
+  set Initial bottom refinement                = 0,1,0
+  set Initial global refinement                = 3    
+  set Initial top refinement                   = 1,1,0
+  set Refinement fraction                      = 0    
+  set Time steps between mesh refinement       = 0    
+end
+
+
+subsection Model settings
+  set Fixed composition boundary indicators   = 
+  set Fixed temperature boundary indicators   = inner, outer 
+  set Include adiabatic heating               = true
+  set Include latent heat                     = false
+  set Include shear heating                   = true
+  set Tangential velocity boundary indicators = outer 
+  # set Prescribed velocity boundary indicators = outer:function
+  set Zero velocity boundary indicators       = inner 
+  set Enable Impacts                          = true
+  subsection Impacts
+    set Data file = /home/siqi/src/aspect/data/impacts/impacts.dat
+  end
+end
+
+subsection Boundary velocity model
+  subsection Function
+    set Function constants  = R=6371e3,V=0.08
+    set Function expression = if(y>0,if(x>0,V*y/R,-V*y/R),0);if(y>0,if(x>0,-V*x/R,V*x/R),0)
+    set Variable names      = x,y,t
+  end
+end
+
+subsection Postprocess
+  set List of postprocessors = visualization 
+  subsection Depth average
+    set Time between graphical output = 5e6    
+  end
+  subsection Visualization
+    set Interpolate output            = true  
+    set List of output variables      = viscosity, strain rate, density, viscosity ratio, nonadiabatic temperature
+    set Number of grouped files       = 1
+    set Output format                 = hdf5
+    set Time between graphical output = 5e6 
+  end
+
+end
+
+
+subsection Termination criteria
+  set Checkpoint on termination = true  
+  set Termination criteria      = user request 
+end
+
+
