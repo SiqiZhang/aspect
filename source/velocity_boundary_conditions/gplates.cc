@@ -324,6 +324,7 @@ namespace aspect
         if (dim == 2)
           {
             //position = rotate(convert_tensor<dim,3>(tensor_position),rotation_axis,rotation_angle);
+            position = rotation_matrix * convert_tensor<dim,3>(tensor_position);
           }
         else
           position = convert_tensor<dim,3>(tensor_position);
@@ -383,6 +384,7 @@ namespace aspect
         if (dim == 2)
         {
           //velos = convert_tensor<3,dim>(rotate(cart_velo,rotation_axis,-1.0*rotation_angle));
+          velos = convert_tensor<3,dim>(transpose(rotation_matrix) * cart_velo);
         }
         else
           velos = convert_tensor<3,dim>(cart_velo);
