@@ -36,14 +36,17 @@ namespace aspect
     /**
      * Move/rename a file from the given old to the given new name.
      */
-    void move_file (const std::string &old_name,
+    int move_file (const std::string &old_name,
                     const std::string &new_name)
     {
       const int error = system (("mv " + old_name + " " + new_name).c_str());
 
+      /*
       AssertThrow (error == 0, ExcMessage(std::string ("Can't move files: ")
                                           +
                                           old_name + " -> " + new_name));
+                                          */
+      return error;
     }
   }
 
@@ -54,6 +57,7 @@ namespace aspect
     computing_timer.enter_section ("Create snapshot");
     unsigned int my_id = Utilities::MPI::this_mpi_process (mpi_communicator);
 
+    int error_file=0;
     if (my_id == 0)
       {
         // if we have previously written a snapshot, then keep the last
@@ -62,12 +66,12 @@ namespace aspect
 
         if (previous_snapshot_exists == true)
           {
-            move_file (parameters.output_directory + "restart.mesh",
-                       parameters.output_directory + "restart.mesh.old");
-            move_file (parameters.output_directory + "restart.mesh.info",
-                       parameters.output_directory + "restart.mesh.info.old");
-            move_file (parameters.output_directory + "restart.resume.z",
-                       parameters.output_directory + "restart.resume.z.old");
+            error_file += move_file (parameters.output_directory + "restart.mesh",
+                                     parameters.output_directory + "restart.mesh.old");
+            error_file += move_file (parameters.output_directory + "restart.mesh.info",
+                                     parameters.output_directory + "restart.mesh.info.old");
+            error_file += move_file (parameters.output_directory + "restart.resume.z",
+                                     parameters.output_directory + "restart.resume.z.old");
 
             // from now on, we know that if we get into this
             // function again that a snapshot has previously
@@ -75,6 +79,9 @@ namespace aspect
             previous_snapshot_exists = true;
           }
       }
+    MPI_Bcast( &error_file,1,MPI_INT,0,mpi_communicator);
+    AssertThrow (error_file == 0, ExcMessage("Faild to backup last checkpoint."));
+
 
     // save Triangulation and Solution vectors:
     {
