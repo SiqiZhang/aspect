@@ -48,6 +48,17 @@ namespace aspect
                                           */
       return error;
     }
+
+    bool file_exist (const std::string &file_name)
+    {
+      if(FILE *file = fopen(file_name.c_str(),"r"))
+      {
+        fclose(file);
+        return true;
+      }
+      else
+        return false;
+    }
   }
 
 
@@ -59,28 +70,37 @@ namespace aspect
 
     int error_file=0;
     if (my_id == 0)
+    {
+      // if we have previously written a snapshot, then keep the last
+      // snapshot in case this one fails to save
+      static bool previous_snapshot_exists = (parameters.resume_computation == true);
+
+      if (previous_snapshot_exists == true)
       {
-        // if we have previously written a snapshot, then keep the last
-        // snapshot in case this one fails to save
-        static bool previous_snapshot_exists = (parameters.resume_computation == true);
-
-        if (previous_snapshot_exists == true)
-          {
-            error_file += move_file (parameters.output_directory + "restart.mesh",
-                                     parameters.output_directory + "restart.mesh.old");
-            error_file += move_file (parameters.output_directory + "restart.mesh.info",
-                                     parameters.output_directory + "restart.mesh.info.old");
-            error_file += move_file (parameters.output_directory + "restart.resume.z",
-                                     parameters.output_directory + "restart.resume.z.old");
-
-            // from now on, we know that if we get into this
-            // function again that a snapshot has previously
-            // been written
-            previous_snapshot_exists = true;
-          }
+        error_file += move_file (parameters.output_directory + "restart.mesh",
+            parameters.output_directory + "restart.mesh.old");
+        error_file += move_file (parameters.output_directory + "restart.mesh.info",
+            parameters.output_directory + "restart.mesh.info.old");
+        error_file += move_file (parameters.output_directory + "restart.resume.z",
+            parameters.output_directory + "restart.resume.z.old");
       }
+
+      // from now on, we know that if we get into this
+      // function again that a snapshot has previously
+      // been written
+      previous_snapshot_exists = true;
+    }
     MPI_Bcast( &error_file,1,MPI_INT,0,mpi_communicator);
-    AssertThrow (error_file == 0, ExcMessage("Faild to backup last checkpoint."));
+    // If something wrong with backup the old checkpoint root will print error while others will throw quiet exception.
+    if(error_file != 0)
+    {
+      if(my_id == 0)
+      {
+        AssertThrow (false, ExcMessage("Faild to backup last checkpoint."));
+      }
+      else
+        throw QuietException();
+    }
 
 
     // save Triangulation and Solution vectors:
@@ -142,6 +162,29 @@ namespace aspect
 #endif
 
     }
+    // Check if all restart file was created
+    {
+      bool error_file_exist=true;
+      error_file_exist = error_file_exist && file_exist(parameters.output_directory + "restart.mesh");
+      error_file_exist = error_file_exist && file_exist(parameters.output_directory + "restart.mesh.info");
+      error_file_exist = error_file_exist && file_exist(parameters.output_directory + "restart.resume.z");
+      if(error_file_exist)
+        error_file = 0;
+      else
+        error_file = 1;
+      MPI_Bcast( &error_file,1,MPI_INT,0,mpi_communicator);
+      if (error_file != 0)
+      {
+        if(my_id == 0)
+        {
+          AssertThrow (false, ExcMessage("Faild to write the last checkpoint."));
+        }
+        else
+          throw QuietException();
+      }
+    }
+
+
     pcout << "*** Snapshot created!" << std::endl << std::endl;
     computing_timer.exit_section();
   }
