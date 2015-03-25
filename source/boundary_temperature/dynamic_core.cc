@@ -349,7 +349,6 @@ namespace aspect
         while(!(dT0==0 || dT2==0 || steps>max_steps))
         {
             // If solution is out of the interval, then something is wrong. 
-<<<<<<< HEAD
             if(dT0*dT2>0)
             {
               const ConditionalOStream &pcout=this->get_pcout();
@@ -361,19 +360,6 @@ namespace aspect
               pcout<<core_data.Q<<std::endl;
               AssertThrow(dT0*dT2<=0,ExcMessage("No single solution for inner core!"));
             }
-=======
-          if(dT0*dT2>0)
-          {
-            const ConditionalOStream &pcout=this->get_pcout();
-            pcout<<"Step: "<<steps<<std::endl
-                 <<" X=["<<X_0<<","<<X_2<<"]"
-                 <<" T=["<<T_0<<","<<T_2<<"]"<<"(K)"
-                 <<" R=["<<R_0/1e3<<","<<R_2/1e3<<"]"<<"(km)"
-                 <<std::endl;
-            pcout<<core_data.Q<<std::endl;
-            AssertThrow(dT0*dT2<=0,ExcMessage("No single solution for inner core!"));
-          }
->>>>>>> Add a utility function to replate , and make use of it.
             // Get the middle point of the interval
             a1=(a0+a2)/2;
             dT1=get_dT(X_1,T_1,R_1,a1);
@@ -619,15 +605,15 @@ namespace aspect
             core_data.Xi=X1;
             core_data.Ri=R1;
             core_data.Ti=T1;
-            inner_temperature = T1 - dTa;
         }
+        inner_temperature = core_data.Ti - dTa;
         update_core_data();
         const ConditionalOStream &pcout=this->get_pcout();
         pcout<<std::setiosflags(std::ios::left);
         pcout<<"   Dynamic core data updated."<<std::endl;
         pcout<<"     "<<std::setw(15)<<"Tc(K)"<<std::setw(15)<<"Ri(km)"<<std::setw(15)<<"Xi"
             <<std::setw(15)<<"dT/dt(K/year)"<<std::setw(15)<<"dR/dt(km/year)"<<std::setw(15)<<"dX/dt(1/year)"<<std::endl;
-        pcout<<"     "<<std::setprecision(6)<<std::setw(15)<<core_data.Ti<<std::setw(15)<<core_data.Ri/1.e3<<std::setw(15)<<core_data.Xi
+        pcout<<"     "<<std::setprecision(6)<<std::setw(15)<<inner_temperature<<std::setw(15)<<core_data.Ri/1.e3<<std::setw(15)<<core_data.Xi
             <<std::setw(15)<<core_data.dT_dt*year_in_seconds<<std::setw(15)<<core_data.Ri/1.e3*year_in_seconds
             <<std::setw(15)<<core_data.dX_dt*year_in_seconds<<std::endl;
     }
