@@ -72,6 +72,11 @@ namespace aspect
      */
     bool fexists(const std::string &filename);
 
+    /**
+     * Replace $ASPECT_SOURCE_DIR in filename path
+     */
+    void replace_path(std::string &filename);
+
 
     /**
      * Extract the compositional values at a single quadrature point with

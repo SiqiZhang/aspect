@@ -25,6 +25,8 @@
 #include <aspect/geometry_model/spherical_shell.h>
 #include <aspect/boundary_temperature/interface.h>
 #include <boost/math/special_functions/spherical_harmonic.hpp>
+#include <aspect/simulator.h>
+#include <aspect/utilities.h>
 
 namespace aspect
 {
@@ -336,14 +338,7 @@ namespace aspect
             // to $ASPECT_SOURCE_DIR, replace it by what CMake has given us
             // as a #define
             solidus_filename = prm.get ("Solidus filename");
-            {
-              const std::string      subst_text = "$ASPECT_SOURCE_DIR";
-              std::string::size_type position;
-              while (position = solidus_filename.find (subst_text),  position!=std::string::npos)
-                solidus_filename.replace (solidus_filename.begin()+position,
-                                          solidus_filename.begin()+position+subst_text.size(),
-                                          ASPECT_SOURCE_DIR);
-            }
+            aspect::Utilities::replace_path(solidus_filename);
 
             // then actually read the file
             solidus_curve.read(solidus_filename);

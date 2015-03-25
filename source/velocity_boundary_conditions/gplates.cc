@@ -1098,14 +1098,7 @@ namespace aspect
           // to $ASPECT_SOURCE_DIR, replace it by what CMake has given us
           // as a #define
           data_directory        = prm.get ("Data directory");
-          {
-            const std::string      subst_text = "$ASPECT_SOURCE_DIR";
-            std::string::size_type position;
-            while (position = data_directory.find (subst_text),  position!=std::string::npos)
-              data_directory.replace (data_directory.begin()+position,
-                                      data_directory.begin()+position+subst_text.size(),
-                                      ASPECT_SOURCE_DIR);
-          }
+          aspect::Utilities::replace_path(data_directory);
 
           velocity_file_name    = prm.get ("Velocity file name");
           interpolation_width   = prm.get_double ("Interpolation width");

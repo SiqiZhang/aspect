@@ -21,6 +21,7 @@
 
 #include <aspect/simulator.h>
 #include <aspect/global.h>
+#include <aspect/utilities.h>
 
 #include <deal.II/base/parameter_handler.h>
 
@@ -746,7 +747,7 @@ namespace aspect
 
     // verify that the output directory actually exists. if it doesn't, create
     // it on processor zero
-    if ((Utilities::MPI::this_mpi_process(mpi_communicator) == 0) &&
+    if ((dealii::Utilities::MPI::this_mpi_process(mpi_communicator) == 0) &&
         (opendir(output_directory.c_str()) == NULL))
       {
         std::cout << "\n"
@@ -796,10 +797,10 @@ namespace aspect
       AssertThrow(min_grid_level <= initial_global_refinement,
                   ExcMessage("Minimum refinement level must not be larger than "
                              "Initial global refinement."));
-      top_surface_refinement      = Utilities::string_to_int
-                                   (Utilities::split_string_list(prm.get("Initial top refinement")));
-      bottom_surface_refinement   = Utilities::string_to_int
-                                   (Utilities::split_string_list(prm.get("Initial bottom refinement")));
+      top_surface_refinement      = dealii::Utilities::string_to_int
+                                   (dealii::Utilities::split_string_list(prm.get("Initial top refinement")));
+      bottom_surface_refinement   = dealii::Utilities::string_to_int
+                                   (dealii::Utilities::split_string_list(prm.get("Initial bottom refinement")));
       AssertThrow(top_surface_refinement.size()==0 ||
                                    top_surface_refinement.size()==initial_global_refinement,
                                    ExcMessage("Size of Initial top refinement list should match "
@@ -813,8 +814,8 @@ namespace aspect
       // extract the list of times at which additional refinement is requested
       // then sort it and convert it to seconds
       additional_refinement_times
-        = Utilities::string_to_double
-          (Utilities::split_string_list(prm.get ("Additional refinement times")));
+        = dealii::Utilities::string_to_double
+          (dealii::Utilities::split_string_list(prm.get ("Additional refinement times")));
       std::sort (additional_refinement_times.begin(),
                  additional_refinement_times.end());
       if (convert_to_years == true)
@@ -831,13 +832,14 @@ namespace aspect
       prm.enter_subsection("Impacts");
       {
         Impacts_datafile=prm.get("Data file");
+        aspect::Utilities::replace_path(Impacts_datafile);
       }
       prm.leave_subsection();
 
       {
         nullspace_removal = NullspaceRemoval::none;
         std::vector<std::string> nullspace_names =
-          Utilities::split_string_list(prm.get("Remove nullspace"));
+          dealii::Utilities::split_string_list(prm.get("Remove nullspace"));
         for (unsigned int i=0; i<nullspace_names.size(); ++i)
           {
             if (nullspace_names[i]=="net rotation")
@@ -931,7 +933,7 @@ namespace aspect
     {
       n_compositional_fields = prm.get_integer ("Number of fields");
 
-      names_of_compositional_fields = Utilities::split_string_list (prm.get("Names of fields"));
+      names_of_compositional_fields = dealii::Utilities::split_string_list (prm.get("Names of fields"));
       AssertThrow ((names_of_compositional_fields.size() == 0) ||
                    (names_of_compositional_fields.size() == n_compositional_fields),
                    ExcMessage ("The length of the list of names for the compositional "
@@ -959,10 +961,10 @@ namespace aspect
       // default names if list is empty
       if (names_of_compositional_fields.size() == 0)
         for (unsigned int i=0; i<n_compositional_fields; ++i)
-          names_of_compositional_fields.push_back("C_" + Utilities::int_to_string(i+1));
+          names_of_compositional_fields.push_back("C_" + dealii::Utilities::int_to_string(i+1));
 
-      const std::vector<int> n_normalized_fields = Utilities::string_to_int
-                                                   (Utilities::split_string_list(prm.get ("List of normalized fields")));
+      const std::vector<int> n_normalized_fields = dealii::Utilities::string_to_int
+                                                   (dealii::Utilities::split_string_list(prm.get ("List of normalized fields")));
       normalized_fields = std::vector<unsigned int> (n_normalized_fields.begin(),
                                                      n_normalized_fields.end());
 
@@ -1001,7 +1003,7 @@ namespace aspect
       try
         {
           const std::vector<types::boundary_id> x_fixed_temperature_boundary_indicators
-            = geometry_model.translate_symbolic_boundary_names_to_ids(Utilities::split_string_list
+            = geometry_model.translate_symbolic_boundary_names_to_ids(dealii::Utilities::split_string_list
                                                                       (prm.get ("Fixed temperature boundary indicators")));
           fixed_temperature_boundary_indicators
             = std::set<types::boundary_id> (x_fixed_temperature_boundary_indicators.begin(),
@@ -1018,7 +1020,7 @@ namespace aspect
       try
         {
           const std::vector<types::boundary_id> x_fixed_composition_boundary_indicators
-            = geometry_model.translate_symbolic_boundary_names_to_ids (Utilities::split_string_list
+            = geometry_model.translate_symbolic_boundary_names_to_ids (dealii::Utilities::split_string_list
                                                                        (prm.get ("Fixed composition boundary indicators")));
           fixed_composition_boundary_indicators
             = std::set<types::boundary_id> (x_fixed_composition_boundary_indicators.begin(),
@@ -1035,7 +1037,7 @@ namespace aspect
       try
         {
           const std::vector<types::boundary_id> x_zero_velocity_boundary_indicators
-            = geometry_model.translate_symbolic_boundary_names_to_ids(Utilities::split_string_list
+            = geometry_model.translate_symbolic_boundary_names_to_ids(dealii::Utilities::split_string_list
                                                                       (prm.get ("Zero velocity boundary indicators")));
           zero_velocity_boundary_indicators
             = std::set<types::boundary_id> (x_zero_velocity_boundary_indicators.begin(),
@@ -1052,7 +1054,7 @@ namespace aspect
       try
         {
           const std::vector<types::boundary_id> x_tangential_velocity_boundary_indicators
-            = geometry_model.translate_symbolic_boundary_names_to_ids(Utilities::split_string_list
+            = geometry_model.translate_symbolic_boundary_names_to_ids(dealii::Utilities::split_string_list
                                                                       (prm.get ("Tangential velocity boundary indicators")));
           tangential_velocity_boundary_indicators
             = std::set<types::boundary_id> (x_tangential_velocity_boundary_indicators.begin(),
@@ -1069,7 +1071,7 @@ namespace aspect
       try
         {
           const std::vector<types::boundary_id> x_free_surface_boundary_indicators
-            = geometry_model.translate_symbolic_boundary_names_to_ids(Utilities::split_string_list
+            = geometry_model.translate_symbolic_boundary_names_to_ids(dealii::Utilities::split_string_list
                                                                       (prm.get ("Free surface boundary indicators")));
           free_surface_boundary_indicators
             = std::set<types::boundary_id> (x_free_surface_boundary_indicators.begin(),
@@ -1086,7 +1088,7 @@ namespace aspect
         }
 
       const std::vector<std::string> x_prescribed_velocity_boundary_indicators
-        = Utilities::split_string_list
+        = dealii::Utilities::split_string_list
           (prm.get ("Prescribed velocity boundary indicators"));
       for (std::vector<std::string>::const_iterator p = x_prescribed_velocity_boundary_indicators.begin();
            p != x_prescribed_velocity_boundary_indicators.end(); ++p)
@@ -1095,7 +1097,7 @@ namespace aspect
           // <id> [x][y][z] : <value (might have spaces)>
           //
           // first tease apart the two halves
-          const std::vector<std::string> split_parts = Utilities::split_string_list (*p, ':');
+          const std::vector<std::string> split_parts = dealii::Utilities::split_string_list (*p, ':');
           AssertThrow (split_parts.size() == 2,
                        ExcMessage ("The format for prescribed velocity boundary indicators "
                                    "requires that each entry has the form `"
@@ -1165,7 +1167,7 @@ namespace aspect
 
           AssertThrow (prescribed_velocity_boundary_indicators.find(boundary_id)
                        == prescribed_velocity_boundary_indicators.end(),
-                       ExcMessage ("Boundary indicator <" + Utilities::int_to_string(boundary_id) +
+                       ExcMessage ("Boundary indicator <" + dealii::Utilities::int_to_string(boundary_id) +
                                    "> appears more than once in the list of indicators "
                                    "for nonzero velocity boundaries."));
 

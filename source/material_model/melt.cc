@@ -24,6 +24,7 @@
 #include <aspect/melting.h>
 #include <aspect/simulator_access.h>
 #include <aspect/geometry_model/spherical_shell.h>
+#include <aspect/utilities.h>
 #include <deal.II/base/parameter_handler.h>
 #include <deal.II/base/table.h>
 #include <deal.II/base/symmetric_tensor.h>
@@ -670,18 +671,18 @@ namespace aspect
                     != 0,
                     ExcMessage ("Scaled melting production from 2D to 3D can only be used if the geometry "
                                 "is a spherical shell."));
-            depth_lower           = prm.get_double ("Lower mantle depth");
-            density_difference    = Utilities::string_to_double(Utilities::split_string_list(prm.get("Density difference")));
-            viscosity_difference    = Utilities::string_to_double(Utilities::split_string_list(prm.get("Viscosity factor")));
+            depth_lower             = prm.get_double ("Lower mantle depth");
+            density_difference      = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Density difference")));
+            viscosity_difference    = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Viscosity factor")));
             
             //Yield stress
             is_yield_enable                     = prm.get_bool   ("Enable yield");
             prm.enter_subsection ("Yield stress");
             {
-              yield_stress_surface             = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield stress surface")));
-              yield_friction                   = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield friction")));
-              yield_composition_factor         = Utilities::string_to_double(Utilities::split_string_list(prm.get("Composition factor")));
-              yield_stress_max                 = Utilities::string_to_double(Utilities::split_string_list(prm.get("Yield stress max")));
+              yield_stress_surface             = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Yield stress surface")));
+              yield_friction                   = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Yield friction")));
+              yield_composition_factor         = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Composition factor")));
+              yield_stress_max                 = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Yield stress max")));
             }
              prm.leave_subsection();
 
@@ -726,23 +727,9 @@ namespace aspect
           prm.enter_subsection ("Data");
           {
             solidus_filename=prm.get ("Solidus filename");
-            {
-              const std::string      subst_text = "$ASPECT_SOURCE_DIR";
-              std::string::size_type position;
-              while (position = solidus_filename.find (subst_text),  position!=std::string::npos)
-                solidus_filename.replace (solidus_filename.begin()+position,
-                    solidus_filename.begin()+position+subst_text.size(),
-                    ASPECT_SOURCE_DIR);
-            }            
+            aspect::Utilities::replace_path(solidus_filename);
             liquidus_filename=prm.get ("Liquidus filename");
-            {
-              const std::string      subst_text = "$ASPECT_SOURCE_DIR";
-              std::string::size_type position;
-              while (position = liquidus_filename.find (subst_text),  position!=std::string::npos)
-                liquidus_filename.replace (liquidus_filename.begin()+position,
-                    liquidus_filename.begin()+position+subst_text.size(),
-                    ASPECT_SOURCE_DIR);
-            }
+            aspect::Utilities::replace_path(liquidus_filename);
 
             Lh=prm.get_double ("Latent heat");
           }

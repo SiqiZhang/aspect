@@ -349,6 +349,7 @@ namespace aspect
         while(!(dT0==0 || dT2==0 || steps>max_steps))
         {
             // If solution is out of the interval, then something is wrong. 
+<<<<<<< HEAD
             if(dT0*dT2>0)
             {
               const ConditionalOStream &pcout=this->get_pcout();
@@ -360,6 +361,19 @@ namespace aspect
               pcout<<core_data.Q<<std::endl;
               AssertThrow(dT0*dT2<=0,ExcMessage("No single solution for inner core!"));
             }
+=======
+          if(dT0*dT2>0)
+          {
+            const ConditionalOStream &pcout=this->get_pcout();
+            pcout<<"Step: "<<steps<<std::endl
+                 <<" X=["<<X_0<<","<<X_2<<"]"
+                 <<" T=["<<T_0<<","<<T_2<<"]"<<"(K)"
+                 <<" R=["<<R_0/1e3<<","<<R_2/1e3<<"]"<<"(km)"
+                 <<std::endl;
+            pcout<<core_data.Q<<std::endl;
+            AssertThrow(dT0*dT2<=0,ExcMessage("No single solution for inner core!"));
+          }
+>>>>>>> Add a utility function to replate , and make use of it.
             // Get the middle point of the interval
             a1=(a0+a2)/2;
             dT1=get_dT(X_1,T_1,R_1,a1);

@@ -101,6 +101,18 @@ namespace aspect
       return static_cast<bool>(ifile); // only in c++11 you can convert to bool directly
     }
 
+    void
+    replace_path(std::string &filename)
+    {
+      const std::string      subst_text = "$ASPECT_SOURCE_DIR";
+      std::string::size_type position;
+      while (position = filename.find (subst_text),  position!=std::string::npos)
+        filename.replace (filename.begin()+position,
+                          filename.begin()+position+subst_text.size(),
+                          ASPECT_SOURCE_DIR);
+    }
+    
+
     template <int dim>
     AsciiDataLookup<dim>::AsciiDataLookup(const unsigned int components,
                                           const double scale_factor)
