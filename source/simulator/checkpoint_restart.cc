@@ -69,26 +69,31 @@ namespace aspect
     unsigned int my_id = Utilities::MPI::this_mpi_process (mpi_communicator);
 
     int error_file=0;
+    static bool previous_snapshot_exists = (parameters.resume_computation == true);
     if (my_id == 0)
     {
       // if we have previously written a snapshot, then keep the last
       // snapshot in case this one fails to save
-      static bool previous_snapshot_exists = (parameters.resume_computation == true);
 
       if (previous_snapshot_exists == true)
       {
-        error_file += move_file (parameters.output_directory + "restart.mesh",
-            parameters.output_directory + "restart.mesh.old");
-        error_file += move_file (parameters.output_directory + "restart.mesh.info",
-            parameters.output_directory + "restart.mesh.info.old");
-        error_file += move_file (parameters.output_directory + "restart.resume.z",
-            parameters.output_directory + "restart.resume.z.old");
-      }
+        bool error_file_exist=true;
+        error_file_exist = error_file_exist && file_exist(parameters.output_directory + "restart.mesh");
+        error_file_exist = error_file_exist && file_exist(parameters.output_directory + "restart.mesh.info");
+        error_file_exist = error_file_exist && file_exist(parameters.output_directory + "restart.resume.z");
 
-      // from now on, we know that if we get into this
-      // function again that a snapshot has previously
-      // been written
-      previous_snapshot_exists = true;
+        if(error_file_exist==true)
+        {
+          error_file += move_file (parameters.output_directory + "restart.mesh",
+              parameters.output_directory + "restart.mesh.old");
+          error_file += move_file (parameters.output_directory + "restart.mesh.info",
+              parameters.output_directory + "restart.mesh.info.old");
+          error_file += move_file (parameters.output_directory + "restart.resume.z",
+              parameters.output_directory + "restart.resume.z.old");
+        }
+        else
+          error_file=1;
+      }
     }
     MPI_Bcast( &error_file,1,MPI_INT,0,mpi_communicator);
     // If something wrong with backup the old checkpoint root will print error while others will throw quiet exception.
@@ -164,14 +169,17 @@ namespace aspect
     }
     // Check if all restart file was created
     {
-      bool error_file_exist=true;
-      error_file_exist = error_file_exist && file_exist(parameters.output_directory + "restart.mesh");
-      error_file_exist = error_file_exist && file_exist(parameters.output_directory + "restart.mesh.info");
-      error_file_exist = error_file_exist && file_exist(parameters.output_directory + "restart.resume.z");
-      if(error_file_exist)
-        error_file = 0;
-      else
-        error_file = 1;
+      if(my_id == 0)
+      {
+        bool error_file_exist=true;
+        error_file_exist = error_file_exist && file_exist(parameters.output_directory + "restart.mesh");
+        error_file_exist = error_file_exist && file_exist(parameters.output_directory + "restart.mesh.info");
+        error_file_exist = error_file_exist && file_exist(parameters.output_directory + "restart.resume.z");
+        if(error_file_exist)
+          error_file = 0;
+        else
+          error_file = 1;
+      }
       MPI_Bcast( &error_file,1,MPI_INT,0,mpi_communicator);
       if (error_file != 0)
       {
@@ -186,6 +194,10 @@ namespace aspect
 
 
     pcout << "*** Snapshot created!" << std::endl << std::endl;
+    // from now on, we know that if we get into this
+    // function again that a snapshot has previously
+    // been written
+    previous_snapshot_exists = true;
     computing_timer.exit_section();
   }
 
