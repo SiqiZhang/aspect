@@ -27,6 +27,7 @@
 
 #include <dirent.h>
 #include <stdlib.h>
+#include <vector>
 
 
 namespace aspect
@@ -301,6 +302,16 @@ namespace aspect
                              Patterns::Anything (),
                              "The data for impact events data, in the following format: "
                              "Time(Ma) Lon(degree) Lat(degree) Radius(km) Velocity(km/s)");
+          prm.declare_entry ("Point one", "0.0,0.0",
+                             Patterns::Anything (),
+                             "Point that determines the plane in which a 2D model lies in. "
+                             "Has to be in the format 'a,b' where a and b are latitude  "
+                             " and longitude in degree.");
+          prm.declare_entry ("Point two", "0.0,90.0",
+                             Patterns::Anything (),
+                             "Point that determines the plane in which a 2D model lies in. "
+                             "Has to be in the format 'a,b' where a and b are latitude "
+                             " and longitude in degree.");
       }
       prm.leave_subsection();
       prm.declare_entry ("Fixed temperature boundary indicators", "",
@@ -833,6 +844,22 @@ namespace aspect
       {
         Impacts_datafile=prm.get("Data file");
         aspect::Utilities::replace_path(Impacts_datafile);
+        std::vector<double> point_one, point_two;
+        point_one = dealii::Utilities::string_to_double
+                    (dealii::Utilities::split_string_list(prm.get("Point one")));
+        point_two = dealii::Utilities::string_to_double
+                    (dealii::Utilities::split_string_list(prm.get("Point two")));
+        AssertThrow(point_one.size()==2 && point_two.size()==2, ExcMessage("Wrong formate of the two points"));
+        const double D2P=acos(-1.)/180.;
+        surface_point_one[0] = (90. - point_one[0]) * D2P;
+        surface_point_two[0] = (90. - point_two[0]) * D2P;
+        surface_point_one[1] = point_one[1] * D2P;
+        surface_point_two[1] = point_two[1] * D2P;
+        if (dim == 2)
+          Assert (surface_oint_one != surface_point_two,
+                  ExcMessage ("To define a plane for the 2D model the two assigned points "
+                              "may not be equal."));
+
       }
       prm.leave_subsection();
 

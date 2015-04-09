@@ -16,7 +16,7 @@ set Use years in output instead of seconds = true
 subsection Boundary temperature model
   set Model name = spherical constant
   subsection Spherical constant
-    set Inner temperature = 2400 
+   set Inner temperature = 2400 
    set Outer temperature = 253   
   end
 end
@@ -149,7 +149,10 @@ subsection Model settings
   set Zero velocity boundary indicators       = inner 
   set Enable Impacts                          = true
   subsection Impacts
-    set Data file = /home/siqi/src/aspect/data/impacts/impacts.dat
+    set Data file = $ASPECT_SOURCE_DIR/data/impacts/impact_2D_test.dat
+    # The two point is given in the format: lat,lon
+    set Point one = 0,0
+    set Point two = 45,90
   end
 end
 

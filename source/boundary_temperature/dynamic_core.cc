@@ -614,7 +614,7 @@ namespace aspect
         pcout<<"     "<<std::setw(15)<<"Tc(K)"<<std::setw(15)<<"Ri(km)"<<std::setw(15)<<"Xi"
             <<std::setw(15)<<"dT/dt(K/year)"<<std::setw(15)<<"dR/dt(km/year)"<<std::setw(15)<<"dX/dt(1/year)"<<std::endl;
         pcout<<"     "<<std::setprecision(6)<<std::setw(15)<<inner_temperature<<std::setw(15)<<core_data.Ri/1.e3<<std::setw(15)<<core_data.Xi
-            <<std::setw(15)<<core_data.dT_dt*year_in_seconds<<std::setw(15)<<core_data.Ri/1.e3*year_in_seconds
+            <<std::setw(15)<<core_data.dT_dt*year_in_seconds<<std::setw(15)<<core_data.dR_dt/1.e3*year_in_seconds
             <<std::setw(15)<<core_data.dX_dt*year_in_seconds<<std::endl;
     }
     template <int dim>

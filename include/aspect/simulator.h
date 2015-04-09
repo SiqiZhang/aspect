@@ -1456,7 +1456,7 @@ namespace aspect
        * Impact events
        */
       void set_impacts();
-      ImpactFunction<dim> impacts;
+      impact::ImpactFunction<dim> impacts;
       
       /**
        * Change compositional field due to depletaion

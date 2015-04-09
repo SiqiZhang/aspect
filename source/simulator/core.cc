@@ -2038,7 +2038,12 @@ namespace aspect
       AssertThrow (spherical_shell_geometry != NULL,
               ExcMessage ("This boundary model is only implemented if the geometry is "
                                 "in fact a spherical shell."));
-      impacts.Initialize(parameters.Impacts_datafile, parameters.start_time,spherical_shell_geometry->R1);
+      impacts.Initialize(parameters.Impacts_datafile,
+                         parameters.start_time,
+                         spherical_shell_geometry->R1,
+                         parameters.surface_point_one,
+                         parameters.surface_point_two,
+                         pcout);
     }
 
     // start the principal loop over time steps:
