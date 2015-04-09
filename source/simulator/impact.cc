@@ -492,7 +492,7 @@ namespace aspect
         Assert (impacts_solution.block(b).l2_norm() == 0,
             ExcInternalError());
     current_constraints.distribute(impacts_solution);
-    //solution.block(2) = impacts_solution.block(2);
+    solution.block(2) = impacts_solution.block(2);
   }
   template class impact::ImpactFunction<2>;
   template class impact::ImpactFunction<3>;
