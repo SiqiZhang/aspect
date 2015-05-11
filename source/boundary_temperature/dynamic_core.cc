@@ -341,25 +341,31 @@ namespace aspect
         double R_0,R_1,R_2;
         double X_0,X_1,X_2;
         double dT0,dT1,dT2;
-        a0=0;
+        a0=0.;
         dT0=get_dT(X_0,T_0,R_0,a0);
-        a2=1;
+        a2=1.;
         dT2=get_dT(X_2,T_2,R_2,a2);
 
         while(!(dT0==0 || dT2==0 || steps>max_steps))
         {
-            // If solution is out of the interval, then something is wrong. 
-            if(dT0*dT2>0)
-            {
-              const ConditionalOStream &pcout=this->get_pcout();
-              pcout<<"Step: "<<steps<<std::endl
-                   <<" X=["<<X_0<<","<<X_2<<"]"
-                   <<" T=["<<T_0<<","<<T_2<<"]"<<"(K)"
-                   <<" R=["<<R_0/1e3<<","<<R_2/1e3<<"]"<<"(km)"
-                   <<std::endl;
-              pcout<<core_data.Q<<std::endl;
-              AssertThrow(dT0*dT2<=0,ExcMessage("No single solution for inner core!"));
-            }
+          // If solution is out of the interval, then something is wrong. 
+          if(dT0*dT2>0)
+          {
+            const ConditionalOStream &pcout=this->get_pcout();
+            pcout<<"Step: "<<steps<<std::endl
+                 <<" X=["<<X_0<<","<<X_2<<"]"
+                 <<" T=["<<T_0<<","<<T_2<<"]"<<"(K)"
+                 <<" R=["<<R_0/1e3<<","<<R_2/1e3<<"]"<<"(km)"
+                 <<" dT0="<<dT0<<", dT2="<<dT2
+                 <<std::endl;
+            pcout<<"Q_CMB="<<core_data.Q<<std::endl;
+            pcout<<"Warning: Solution for inner core can not be found! Mid-point is used."<<std::endl;
+            X=(X_0+X_2)/2.;
+            R=(R_0+R_2)/2.;
+            T=(T_0+T_2)/2.;
+            return;
+            //AsertThrow(dT0*dT2<=0,ExcMessage("No single solution for inner core!"));
+          }
             // Get the middle point of the interval
             a1=(a0+a2)/2;
             dT1=get_dT(X_1,T_1,R_1,a1);
