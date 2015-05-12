@@ -81,7 +81,8 @@ namespace aspect
        // Apply compositional difference, it can go outside cutoff
        if(viscosity_difference.size()>0)
          for(unsigned i=0;i<composition.size();i++)
-           viscosity*=pow(viscosity_difference[i],composition[i]);
+           //viscosity*=pow(viscosity_difference[i],composition[i]);
+           if(composition[i]>50.)viscosity *= viscosity_difference[i];
        return viscosity;
     }
 
@@ -120,7 +121,9 @@ namespace aspect
       {
         for(unsigned i=0;i<compositional_fields.size();i++)
         {
-          rho+=density_difference[i]*compositional_fields[i];
+          //rho+=density_difference[i]*compositional_fields[i];
+          if(compositional_fields[i]>.5)
+            rho+=density_difference[i];
         }
       }
       else
@@ -387,6 +390,7 @@ namespace aspect
         double default_composition=1.;
         if(is_yield_dependent_on_composition)
         {
+          /*
           for(unsigned i=0;i<n_compositional_fields;i++)
           {
             double composition_i=std::min(1.,std::max(compositional_fields[i]*yield_composition_factor[i+1],0.));
@@ -396,6 +400,16 @@ namespace aspect
           default_composition = std::min(std::max(0.,default_composition),1.);
           yield_stress += (yield_stress_surface[0]+yield_friction[0]*pressure)
                           *default_composition*yield_composition_factor[0];
+          */
+          yield_stress = yield_stress_surface[0]+yield_friction[0]*pressure;
+          for(unsigned i=0;i<n_compositional_fields;i++)
+          {
+            if(compositional_fields[i]>.5)
+            {
+              yield_stress = yield_stress_surface[i+1]+yield_friction[i+1]*pressure;
+              break;
+            }
+          }
         }
         else
         {
