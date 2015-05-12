@@ -79,10 +79,10 @@ namespace aspect
        */
 
        // Apply compositional difference, it can go outside cutoff
-       if(viscosity_difference.size()>0)
+       if(viscosity_difference.size() == composition.size() && composition_factor.size()==composition.size())
          for(unsigned i=0;i<composition.size();i++)
            //viscosity*=pow(viscosity_difference[i],composition[i]);
-           if(composition[i]>50.)viscosity *= viscosity_difference[i];
+           if(composition[i] >= composition_factor[i])viscosity *= viscosity_difference[i];
        return viscosity;
     }
 
@@ -98,11 +98,12 @@ namespace aspect
       const double depth = (this->get_geometry_model()).depth(position);
       const double strain_rate_II=std::max(std::sqrt(std::fabs(second_invariant(strain_rate))),1e-17);
 
-      std::vector<double> viscosity_inverse(4);
+      std::vector<double> viscosity_inverse(5);
       viscosity_inverse[0] = get_viscosity_diffusion_inverse(temperature,pressure,depth);
       viscosity_inverse[1] = get_viscosity_dislocation_inverse(temperature,pressure,strain_rate_II,depth);
       viscosity_inverse[2] = get_viscosity_yield_inverse(pressure,composition,strain_rate_II,depth);
       viscosity_inverse[3] = get_viscosity_peierls_inverse(temperature,pressure,strain_rate_II,depth);
+      viscosity_inverse[4] = 1./viscosity_cutoff_high;
       std::vector<double>::iterator biggest = std::max_element(viscosity_inverse.begin(), viscosity_inverse.end());
       // Return which one is the largest in four inversed viscosity values.
       return std::distance(viscosity_inverse.begin(), biggest);
@@ -401,19 +402,28 @@ namespace aspect
           yield_stress += (yield_stress_surface[0]+yield_friction[0]*pressure)
                           *default_composition*yield_composition_factor[0];
           */
-          yield_stress = yield_stress_surface[0]+yield_friction[0]*pressure;
-          for(unsigned i=0;i<n_compositional_fields;i++)
+          yield_stress = std::max(yield_stress_surface[0]+yield_friction[0]*pressure,
+                                  yield_stress_max[0]);
+          if( yield_stress_surface.size() == n_compositional_fields+1 &&
+              yield_friction.size()       == n_compositional_fields+1 &&
+              yield_stress_max.size()     == n_compositional_fields+1 &&
+              composition_factor.size()   == n_compositional_fields )
           {
-            if(compositional_fields[i]>.5)
+            for(unsigned i=0;i<n_compositional_fields;i++)
             {
-              yield_stress = yield_stress_surface[i+1]+yield_friction[i+1]*pressure;
-              break;
+              if(compositional_fields[i] >= composition_factor[i])
+              {
+                yield_stress = std::max(yield_stress_surface[i+1]+yield_friction[i+1]*pressure,
+                                        yield_stress_max[i+1]);
+                break;
+              }
             }
           }
         }
         else
         {
-          yield_stress=yield_stress_surface[0]+yield_friction[0]*pressure;        
+          yield_stress= std::max(yield_stress_surface[0]+yield_friction[0]*pressure,
+                                 yield_stress_max[0]);
         }
         return 1./yield_stress*strain_rate_II*2.0;
       }
@@ -450,6 +460,11 @@ namespace aspect
              prm.declare_entry ("Viscosity factor", "",
                                 Patterns::List(Patterns::Double ()),
                                 "Viscosity difference of different composition (Pa s)");
+             prm.declare_entry ("Composition factor","",
+                                Patterns::List(Patterns::Double ()),
+                                "List of composition factors. The compositional field is treated distinguishly. "
+                                "For each compositional field, composition value greater that this factor will "
+                                "be treated as true.");
              //Yield stress
              prm.declare_entry ("Enable yield", "false",
                                 Patterns::Bool (),
@@ -688,6 +703,7 @@ namespace aspect
             depth_lower             = prm.get_double ("Lower mantle depth");
             density_difference      = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Density difference")));
             viscosity_difference    = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Viscosity factor")));
+            composition_factor      = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Composition factor")));
             
             //Yield stress
             is_yield_enable                     = prm.get_bool   ("Enable yield");

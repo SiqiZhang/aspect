@@ -203,6 +203,7 @@ namespace aspect
     double viscosity_cutoff_high;
     std::vector<double> density_difference;
     std::vector<double> viscosity_difference;
+    std::vector<double> composition_factor;
     
     bool                is_yield_enable;
     bool                is_yield_dependent_on_composition;
