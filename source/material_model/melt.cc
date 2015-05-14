@@ -402,7 +402,7 @@ namespace aspect
           yield_stress += (yield_stress_surface[0]+yield_friction[0]*pressure)
                           *default_composition*yield_composition_factor[0];
           */
-          yield_stress = std::max(yield_stress_surface[0]+yield_friction[0]*pressure,
+          yield_stress = std::min(yield_stress_surface[0]+yield_friction[0]*pressure,
                                   yield_stress_max[0]);
           if( yield_stress_surface.size() == n_compositional_fields+1 &&
               yield_friction.size()       == n_compositional_fields+1 &&
@@ -413,7 +413,7 @@ namespace aspect
             {
               if(compositional_fields[i] >= composition_factor[i])
               {
-                yield_stress = std::max(yield_stress_surface[i+1]+yield_friction[i+1]*pressure,
+                yield_stress = std::min(yield_stress_surface[i+1]+yield_friction[i+1]*pressure,
                                         yield_stress_max[i+1]);
                 break;
               }
@@ -422,7 +422,7 @@ namespace aspect
         }
         else
         {
-          yield_stress= std::max(yield_stress_surface[0]+yield_friction[0]*pressure,
+          yield_stress= std::min(yield_stress_surface[0]+yield_friction[0]*pressure,
                                  yield_stress_max[0]);
         }
         return 1./yield_stress*strain_rate_II*2.0;
