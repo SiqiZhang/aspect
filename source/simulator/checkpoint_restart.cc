@@ -20,6 +20,7 @@
 
 
 #include <aspect/simulator.h>
+#include <aspect/postprocess/visualization.h>
 
 #include <deal.II/base/mpi.h>
 #include <deal.II/grid/grid_tools.h>
@@ -315,6 +316,13 @@ namespace aspect
                                  +
                                  ">"));
       }
+    // Force to re-write the mesh
+    {
+      Postprocess::Visualization<dim> * visualization
+        = this->postprocess_manager.template find_postprocessor<Postprocess::Visualization<dim> >();
+      if(visualization!=NULL)
+        visualization->mesh_changed_signal();
+    }
   }
 
 }

@@ -350,6 +350,11 @@ namespace aspect
                         << "Could not find entry <"
                         << arg1
                         << "> among the names of registered postprocessors.");
+         /**
+          *   * Record that the mesh changed. This helps some output writers avoid
+          *     * writing the same mesh multiple times.
+          *       */
+         void mesh_changed_signal ();
 
       private:
         /**
@@ -405,12 +410,6 @@ namespace aspect
          * the time step becomes larger. This is done after every output.
          */
         void set_last_output_time (const double current_time);
-
-        /**
-         * Record that the mesh changed. This helps some output writers avoid
-         * writing the same mesh multiple times.
-         */
-        void mesh_changed_signal ();
 
         /**
          * Whether the mesh changed since the last output.
