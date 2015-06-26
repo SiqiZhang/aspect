@@ -178,6 +178,7 @@ namespace aspect
                                  "If using the Fe-FeS system solidus from Buono & Walker (2011) instead.");
           }
           prm.leave_subsection ();
+
           prm.enter_subsection("Radioactive heat source");
           {
               prm.declare_entry ("Number of radioactive heating elements","0",
@@ -192,6 +193,15 @@ namespace aspect
               prm.declare_entry ("Initial concentrations","",
                       Patterns::List (Patterns::Double ()),
                       "Initial concentrations of different elements (ppm)");
+          }
+          prm.leave_subsection ();
+
+          prm.enter_subsection("Other energy source");
+          {
+            prm.declare_entry ("File name","",
+                               Patterns::Anything(),
+                               "Data file name for other energy source into the core. "
+                               "Formate [Time(Gyr)   Energy rate(W)]");
           }
           prm.leave_subsection ();
 
@@ -270,6 +280,12 @@ namespace aspect
           }
           prm.leave_subsection ();
 
+          prm.enter_subsection("Other energy source");
+          {
+            name_OES = prm.get("File name");
+          }
+          prm.leave_subsection ();
+
           L=sqrt(3*K0*(log(Rho_cen/Rho_0)+1)/(2*M_PI*G*Rho_0*Rho_cen));
           D=sqrt(3*Cp/(2*M_PI*Alpha*Rho_cen*G));
 
@@ -277,6 +293,40 @@ namespace aspect
         prm.leave_subsection ();
       }
       prm.leave_subsection ();
+    }
+
+    template <int dim>
+    void
+    Dynamic_core<dim>::read_data_OES()
+    {
+      FILE *fp=fopen(name_OES.c_str(),"r");
+      if(fp!=NULL)
+      {
+        struct str_data_OES data_read;
+        while(!feof(fp))
+        {
+          if(fscanf(fp,"%le %le\n",&(data_read.t),&(data_read.w))==2)
+              data_OES.push_back(data_read);
+        }
+        fclose(fp);
+      }
+    }
+
+    template <int dim>
+    double
+    Dynamic_core<dim>::get_OES(double t) const
+    {
+      t/=1.e9*year_in_seconds;
+      double w=0.;
+      for(unsigned i=1;i<data_OES.size();i++)
+      {
+        if(t>=data_OES[i-1].t && t<data_OES[i].t )
+        {
+          w=data_OES[i-1].w+(t-data_OES[i-1].t)/(data_OES[i].t-data_OES[i-1].t)*(data_OES[i].w-data_OES[i-1].w);
+          break;
+        }
+      }
+      return w;
     }
     
     template <int dim>
@@ -581,6 +631,7 @@ namespace aspect
         AssertThrow(dynamic_core_statistics!=NULL,
             ExcMessage ("Dynamic core boundary condition has to work with dynamic core statistics postprocessor."));
         core_data.Q=dynamic_core_statistics->get_CMB_heat_flux();
+        core_data.Q+=get_OES(this->get_time());
         core_data.dt=this->get_timestep();
         core_data.H=get_radioheating_rate();
         if(is_first_call==true)

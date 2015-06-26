@@ -347,6 +347,19 @@ namespace aspect
         double dTa;
 
         /**
+         * Other energy source into the core, e.g. the mechanical stirring of the moon.
+         */
+        std::string name_OES;
+        struct str_data_OES
+        {
+          double t;
+          double w;
+        };
+        std::vector<struct str_data_OES> data_OES;
+        void read_data_OES();
+        double get_OES(double t) const;
+
+        /**
          * Getting the energy partition factor a 
          * (between core cooling and inner core growth)
          * from given inner core radius
