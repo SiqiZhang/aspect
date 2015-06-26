@@ -249,6 +249,11 @@ namespace aspect
         double Tm2;
         double Theta;
         bool composition_dependency;
+        
+        /**
+         * If using the Fe-FeS system solidus from Buono & Walker (2011) instead.
+         */
+        bool use_bw11;
 
         /**
          * Parameters for core adiabatic used in solving inner core radius

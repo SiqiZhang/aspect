@@ -173,6 +173,9 @@ namespace aspect
               prm.declare_entry ("Ta2","-1.8",
                       Patterns::Double (),
                       "Adiabatic temperature cure (Nimmo et al. [2004] eq. (41)) parameter Ta2. Unit: 1/TPa^2");
+              prm.declare_entry ("Use BW11","false",
+                                 Patterns::Bool (),
+                                 "If using the Fe-FeS system solidus from Buono & Walker (2011) instead.");
           }
           prm.leave_subsection ();
           prm.enter_subsection("Radioactive heat source");
@@ -238,7 +241,8 @@ namespace aspect
               Ta1           =  prm.get_double ("Ta1");
               Ta2           =  prm.get_double ("Ta2");
               composition_dependency 
-                            =prm.get_bool("Composition dependency");
+                            =  prm.get_bool("Composition dependency");
+              use_bw11      =  prm.get_bool("Use BW11");
           }
           prm.leave_subsection ();
           
@@ -533,10 +537,31 @@ namespace aspect
     double
     Dynamic_core<dim>::get_solidus(double X,double p) const
     {
+      if(use_bw11)
+      {
+        // Change from weight percent to mole percent.
+        double x,x0=32./88.;
+        if(X>x0)
+          x=56.*X/(32.*(1.-X));
+        else
+          x=1.;
+        // Change from Pa to GPa
+        p*=1e-9;
+        // Fe-FeS system solidus by Buono & Walker (2011)
+        return (-2.4724*p*p*p*p + 28.025*p*p*p + 9.1404*p*p + 581.71*p + 3394.8) * x*x*x*x 
+              +( 1.7978*p*p*p*p - 6.7881*p*p*p - 197.69*p*p - 271.69*p - 8219.5) * x*x*x
+              +(-0.1702*p*p*p*p - 9.3959*p*p*p + 163.53*p*p - 319.35*p + 5698.6) * x*x
+              +(-0.2308*p*p*p*p + 7.1000*p*p*p - 64.118*p*p + 105.98*p - 1621.9) * x
+              +( 0.2302*p*p*p*p - 5.3688*p*p*p + 38.124*p*p - 46.681*p + 1813.8);
+
+      }
+      else
+      {
         if(composition_dependency)
             return(Tm0*(1-Theta*X)*(1+Tm1*p+Tm2*pow(p,2)));
         else
             return(Tm0*(1-Theta)*(1+Tm1*p+Tm2*pow(p,2)));
+      }
     }
 
     template <int dim>
