@@ -216,7 +216,7 @@ namespace aspect
 
           // also make sure that the other columns filled by the this object
           // all show up with sufficient accuracy and in scientific notation
-          statistics.set_precision (name, 4);
+          statistics.set_precision (name, 3);
           statistics.set_scientific (name, true);
 
           // finally have something for the screen
@@ -248,45 +248,50 @@ namespace aspect
           statistics.set_precision (name8, 4);
           statistics.set_scientific (name8, false);
 
-           const std::string name3 = "Es (MW/K)";
-           //statistics.add_value (name3, SimulatorAccess<dim>::postprocess_dynamic_core.Es*1e-6);
-           statistics.add_value (name3, core_data->Es*core_data->dT_dt*1e-6);
-           // also make sure that the other columns filled by the this object
-           // all show up with sufficient accuracy and in scientific notation
-           statistics.set_precision (name3, 2);
-           statistics.set_scientific (name3, false);
+          const std::string name3 = "Es (W/K)";
+          //statistics.add_value (name3, SimulatorAccess<dim>::postprocess_dynamic_core.Es*1e-6);
+          statistics.add_value (name3, core_data->Es*core_data->dT_dt);
+          // also make sure that the other columns filled by the this object
+          // all show up with sufficient accuracy and in scientific notation
+           statistics.set_precision (name3, 3);
+           statistics.set_scientific (name3, true);
 
-           const std::string name4 = "Er (MW/K)";
+           const std::string name4 = "Er (W/K)";
            //statistics.add_value (name4, SimulatorAccess<dim>::postprocess_dynamic_core.Er*1e-6);
-           statistics.add_value (name4, core_data->Er*1e-6);
+           statistics.add_value (name4, core_data->Er);
            // also make sure that the other columns filled by the this object
            // all show up with sufficient accuracy and in scientific notation
-           statistics.set_precision (name4, 2);
-           statistics.set_scientific (name4, false);
+           statistics.set_precision (name4, 3);
+           statistics.set_scientific (name4, true);
 
-           const std::string name5 = "El (MW/K)";
+           const std::string name5 = "El (W/K)";
            //statistics.add_value (name5, SimulatorAccess<dim>::postprocess_dynamic_core.El*1e-6);
-           statistics.add_value (name5, core_data->El*core_data->dR_dt*1e-6);
+           statistics.add_value (name5, core_data->El*core_data->dR_dt);
            // also make sure that the other columns filled by the this object
            // all show up with sufficient accuracy and in scientific notation
-           statistics.set_precision (name5, 2);
-           statistics.set_scientific (name5, false);
+           statistics.set_precision (name5, 3);
+           statistics.set_scientific (name5, true);
 
-           const std::string name6 = "Eg (MW/K)";
+           const std::string name6 = "Eg (W/K)";
            //statistics.add_value (name6, SimulatorAccess<dim>::postprocess_dynamic_core.Eg*1e-6);
-           statistics.add_value (name6, core_data->Eg*core_data->dR_dt*1e-6);
+           statistics.add_value (name6, core_data->Eg*core_data->dR_dt);
            // also make sure that the other columns filled by the this object
            // all show up with sufficient accuracy and in scientific notation
-           statistics.set_precision (name6, 2);
-           statistics.set_scientific (name6, false);
+           statistics.set_precision (name6, 3);
+           statistics.set_scientific (name6, true);
 
-           const std::string name7 = "Ek (MW/K)";
+           const std::string name7 = "Ek (W/K)";
            //statistics.add_value (name7, SimulatorAccess<dim>::postprocess_dynamic_core.Ek*1e-6);
-           statistics.add_value (name7, core_data->Ek*1e-6);
+           statistics.add_value (name7, core_data->Ek);
            // also make sure that the other columns filled by the this object
            // all show up with sufficient accuracy and in scientific notation
-           statistics.set_precision (name7, 2);
-           statistics.set_scientific (name7, false);
+           statistics.set_precision (name7, 3);
+           statistics.set_scientific (name7, true);
+
+           const std::string name9 = "Other energy source (W)";
+           statistics.add_value (name9, core_data->Q_OES);
+           statistics.set_precision (name9, 3);
+           statistics.set_scientific (name9, true);
 
       return std::pair<std::string, std::string> ("Core data (Q_CMB/Q_surface)",
                                                   screen_text.str());

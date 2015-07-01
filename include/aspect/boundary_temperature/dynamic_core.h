@@ -72,6 +72,11 @@ namespace aspect
          * concentration.
          */
         double dR_dt,dT_dt,dX_dt;
+
+        /**
+         * Other energy source into the core
+         */
+        double Q_OES;
     };
     
     

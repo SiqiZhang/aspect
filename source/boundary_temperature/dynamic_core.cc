@@ -305,10 +305,15 @@ namespace aspect
         struct str_data_OES data_read;
         while(!feof(fp))
         {
-          if(fscanf(fp,"%le %le\n",&(data_read.t),&(data_read.w))==2)
+          if(fscanf(fp,"%le\t%le\n",&(data_read.t),&(data_read.w))==2)
               data_OES.push_back(data_read);
         }
         fclose(fp);
+      }
+      if(data_OES.size()!=0)
+      {
+        const ConditionalOStream &pcout=this->get_pcout();
+        pcout<<"Other energy source is in use ( "<<data_OES.size()<<" data points is read)."<<std::endl;
       }
     }
 
@@ -326,7 +331,7 @@ namespace aspect
           break;
         }
       }
-      return w;
+      return pow(10,w);
     }
     
     template <int dim>
@@ -591,7 +596,7 @@ namespace aspect
       {
         // Change from weight percent to mole percent.
         double x,x0=32./88.;
-        if(X>x0)
+        if(X<x0)
           x=56.*X/(32.*(1.-X));
         else
           x=1.;
@@ -630,12 +635,15 @@ namespace aspect
             = this->template find_postprocessor<const Postprocess::DynamicCoreStatistics<dim> >();
         AssertThrow(dynamic_core_statistics!=NULL,
             ExcMessage ("Dynamic core boundary condition has to work with dynamic core statistics postprocessor."));
-        core_data.Q=dynamic_core_statistics->get_CMB_heat_flux();
-        core_data.Q+=get_OES(this->get_time());
-        core_data.dt=this->get_timestep();
-        core_data.H=get_radioheating_rate();
+        
+        core_data.Q     = dynamic_core_statistics->get_CMB_heat_flux();
+        core_data.Q_OES = get_OES(this->get_time());
+        core_data.Q    -= core_data.Q_OES;
+        core_data.dt    = this->get_timestep();
+        core_data.H     = get_radioheating_rate();
         if(is_first_call==true)
         {
+          read_data_OES();
           const GeometryModel::SphericalShell<dim>* spherical_shell_geometry =
               dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&(this->get_geometry_model()));
           AssertThrow (spherical_shell_geometry != NULL,
