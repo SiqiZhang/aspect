@@ -229,10 +229,13 @@ namespace aspect
                  bool interpol) const
           {
             const double nT = get_nT(temperature);
-            const unsigned int inT = static_cast<unsigned int>(nT);
+            unsigned int inT = static_cast<unsigned int>(nT);
+            if(inT>=(numtemp-1))inT--;
+            
 
             const double np = get_np(pressure);
-            const unsigned int inp = static_cast<unsigned int>(np);
+            unsigned int inp = static_cast<unsigned int>(np);
+            if(inp>=(numpress-1))inp--;
 
             Assert(inT<values.n_rows(), ExcMessage("Attempting to look up a temperature value with index greater than the number of rows."));
             Assert(inp<values.n_cols(), ExcMessage("Attempting to look up a pressure value with index greater than the number of columns."));
@@ -265,7 +268,7 @@ namespace aspect
           double get_nT(double temperature) const
           {
             temperature=std::max(min_temp, temperature);
-            temperature=std::min(temperature, max_temp-delta_temp);
+            temperature=std::min(temperature, max_temp);
             Assert(temperature>=min_temp, ExcMessage("ASPECT found a temperature less than min_T."));
             Assert(temperature<=max_temp, ExcMessage("ASPECT found a temperature greater than max_T."));
             return (temperature-min_temp)/delta_temp;
@@ -274,7 +277,7 @@ namespace aspect
           double get_np(double pressure) const
           {
             pressure=std::max(min_press, pressure);
-            pressure=std::min(pressure, max_press-delta_press);
+            pressure=std::min(pressure, max_press);
             Assert(pressure>=min_press, ExcMessage("ASPECT found a pressure less than min_p."));
             Assert(pressure<=max_press, ExcMessage("ASPECT found a pressure greater than max_p."));
             return (pressure-min_press)/delta_press;

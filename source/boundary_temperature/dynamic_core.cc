@@ -331,7 +331,10 @@ namespace aspect
           break;
         }
       }
-      return pow(10,w);
+      if(w==0.)
+        return 0.;
+      else
+        return pow(10,w);
     }
     
     template <int dim>

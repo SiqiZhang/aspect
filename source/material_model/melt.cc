@@ -69,7 +69,7 @@ namespace aspect
       viscosity=1./(viscosity_diffusion_inverse + viscosity_dislocation_inverse + viscosity_yield_inverse + viscosity_peierls_inverse);
 
        // Apply cutoff
-       viscosity = std::max(viscosity,viscosity_cutoff_low);
+       //viscosity = std::max(viscosity,viscosity_cutoff_low);
        viscosity = std::min(viscosity,viscosity_cutoff_high);
 
        /*
@@ -77,6 +77,13 @@ namespace aspect
        Melt_fraction=Data_Melt.Melting_fraction(temperature,pressure,radius,0.,0.);
        viscosity*=std::exp(-std::log(exponential_melt)*Melt_fraction);
        */
+
+       // Apply partial melting effect into viscosity
+       viscosity*=std::pow(exponential_melt, melt_fraction(temperature, 
+                                                           pressure,
+                                                           composition,
+                                                           position));
+       viscosity = std::max(viscosity,viscosity_cutoff_low);
 
        // Apply compositional difference, it can go outside cutoff
        if(viscosity_difference.size() == composition.size() && composition_factor.size()==composition.size())
@@ -525,7 +532,7 @@ namespace aspect
                prm.declare_entry ("A_LM", "1.92e-11",
                                   Patterns::Double (0),
                                   "prefactor for diffusion creep of lower mantle"
-                                  "Yita=1/A*(E+P*V)/(R*T)");
+                                  "Yita=1/A*(E+P*V)/(R*T)");  
              }
              prm.leave_subsection();
 
