@@ -1204,7 +1204,7 @@ namespace aspect
         }
 
       const std::vector<std::string> x_prescribed_traction_boundary_indicators
-        = Utilities::split_string_list
+        = dealii::Utilities::split_string_list
           (prm.get ("Prescribed traction boundary indicators"));
       for (std::vector<std::string>::const_iterator p = x_prescribed_traction_boundary_indicators.begin();
            p != x_prescribed_traction_boundary_indicators.end(); ++p)
@@ -1213,7 +1213,7 @@ namespace aspect
           // <id> [x][y][z] : <value (might have spaces)>
           //
           // first tease apart the two halves
-          const std::vector<std::string> split_parts = Utilities::split_string_list (*p, ':');
+          const std::vector<std::string> split_parts = dealii::Utilities::split_string_list (*p, ':');
           AssertThrow (split_parts.size() == 2,
                        ExcMessage ("The format for prescribed traction boundary indicators "
                                    "requires that each entry has the form `"
@@ -1283,7 +1283,7 @@ namespace aspect
 
           AssertThrow (prescribed_traction_boundary_indicators.find(boundary_id)
                        == prescribed_traction_boundary_indicators.end(),
-                       ExcMessage ("Boundary indicator <" + Utilities::int_to_string(boundary_id) +
+                       ExcMessage ("Boundary indicator <" + dealii::Utilities::int_to_string(boundary_id) +
                                    "> appears more than once in the list of indicators "
                                    "for nonzero traction boundaries."));
 

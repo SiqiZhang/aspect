@@ -255,7 +255,10 @@ namespace aspect
                              "The thickness of lithosphere thickness. Units: m");
           prm.declare_entry ("Bottom layer thickness","0",
                              Patterns::Double (0),
-                             "The thickness of bottom layer thickness. Units: m");          
+                             "The thickness of bottom layer thickness. Units: m");
+          prm.declare_entry ("Compressible","true",
+                             Patterns::Bool(),
+                             "If the model is compressible");
           prm.enter_subsection("Perturbation");
           {
             prm.declare_entry ("Temperature amplitude", "0e0",
@@ -323,6 +326,7 @@ namespace aspect
           deltaT=prm.get_double("Supersolidus");
           litho_thick=prm.get_double("Lithosphere thickness");
           bottom_thick=prm.get_double("Bottom layer thickness");
+          compressible=prm.get_bool("Compressible");
           prm.enter_subsection("Perturbation");
           {
             magnitude_T    = prm.get_double("Temperature amplitude");

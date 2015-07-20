@@ -117,21 +117,6 @@ namespace aspect
         virtual
         void
         update ();
- 
-        /**
-         * A function that is called at the beginning of each time step. The
-         * default implementation of the function does nothing, but derived
-         * classes that need more elaborate setups for a given time step may
-         * overload the function.
-         *
-         * The point of this function is to allow complex boundary temperature
-         * models to do an initialization step once at the beginning of each
-         * time step. An example would be a model that needs to call an
-         * external program to compute temperature change at bottom.
-         */
-        virtual
-        void
-        update ();
 
         /**
          * Declare the parameters this class takes through input files. The

@@ -173,6 +173,11 @@ namespace aspect
          * Data class for melting curve
          */
         MeltingCurve solidus_curve;
+
+        /**
+         * If the model is compressible
+         */
+        bool compressible;        
     };
   }
 }
