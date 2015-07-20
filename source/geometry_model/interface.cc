@@ -63,6 +63,12 @@ namespace aspect
       return true;
     }
 
+    template <int dim>
+    bool
+    Interface<dim>::use_curved_mapping_internally() const
+    {
+      return false;
+    }
 
     template <int dim>
     void

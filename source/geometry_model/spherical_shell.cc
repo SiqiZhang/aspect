@@ -85,23 +85,26 @@ namespace aspect
       // if deal.II is sufficiently new, then use a manifold
       // description for all cells. use manifold_id 2 in order not to
       // step on the boundary indicators used below
-      static const SphericalManifold<dim> spherical_manifold;
-      coarse_grid.set_manifold (2, spherical_manifold);
+      if(this->use_curved_mapping_internally()==true)
+      {
+        static const SphericalManifold<dim> spherical_manifold;
+        coarse_grid.set_manifold (2, spherical_manifold);
 
-      for (typename Triangulation<dim>::active_cell_iterator
-	     cell = coarse_grid.begin_active();
-	   cell != coarse_grid.end(); ++cell)
-	cell->set_all_manifold_ids (2);
+        for (typename Triangulation<dim>::active_cell_iterator
+            cell = coarse_grid.begin_active();
+            cell != coarse_grid.end(); ++cell)
+          cell->set_all_manifold_ids (2);
 
-      // clear the manifold id from objects for which we have boundary
-      // objects (and need boundary objects because at the time of
-      // writing, only boundary objects provide normal vectors)
-      for (typename Triangulation<dim>::active_cell_iterator
-	     cell = coarse_grid.begin_active();
-	   cell != coarse_grid.end(); ++cell)
-	for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
-	  if (cell->at_boundary(f))
-	    cell->face(f)->set_all_manifold_ids (numbers::invalid_manifold_id);
+        // clear the manifold id from objects for which we have boundary
+        // objects (and need boundary objects because at the time of
+        // writing, only boundary objects provide normal vectors)
+        for (typename Triangulation<dim>::active_cell_iterator
+            cell = coarse_grid.begin_active();
+            cell != coarse_grid.end(); ++cell)
+          for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
+            if (cell->at_boundary(f))
+              cell->face(f)->set_all_manifold_ids (numbers::invalid_manifold_id);
+      }
 #endif
       
       // attach a boundary object to the inner
@@ -272,6 +275,14 @@ namespace aspect
       return true;
     }
 
+    template <int dim>
+    bool
+    SphericalShell<dim>::use_curved_mapping_internally() const
+    {
+      return is_use_curved_mapping_internally;
+    }
+
+
 
     template <int dim>
     void
@@ -313,6 +324,9 @@ namespace aspect
                              "\n\n"
                              "In either case, this parameter is ignored unless the opening "
                              "angle of the domain is 360 degrees.");
+          prm.declare_entry ("Use curved mapping internally","false",
+                             Patterns::Bool(),
+                             "Wether to use curved mapping internally or not.");
         }
         prm.leave_subsection();
       }
@@ -333,6 +347,7 @@ namespace aspect
           R1  = prm.get_double ("Outer radius");
           phi = prm.get_double ("Opening angle");
           n_cells_along_circumference = prm.get_integer ("Cells along circumference");
+          is_use_curved_mapping_internally = prm.get_bool("Use curved mapping internally");
         }
         prm.leave_subsection();
       }

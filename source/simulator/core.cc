@@ -166,6 +166,8 @@ namespace aspect
       (parameters.free_surface_enabled
        ||
        geometry_model->has_curved_elements() == false
+       ||
+       geometry_model->use_curved_mapping_internally() == false
       )?false:true),
 
     // define the finite element

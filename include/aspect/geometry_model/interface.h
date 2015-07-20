@@ -260,6 +260,10 @@ namespace aspect
         void
         parse_parameters (ParameterHandler &prm);
 
+        virtual
+        bool
+        use_curved_mapping_internally() const;
+
     };
 
 

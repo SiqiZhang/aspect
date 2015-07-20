@@ -103,6 +103,10 @@ namespace aspect
         bool
         has_curved_elements() const;
 
+        virtual
+        bool
+        use_curved_mapping_internally() const;
+
         /**
          * Declare the parameters this class takes through input files. The
          * default implementation of this function does not describe any
@@ -156,6 +160,12 @@ namespace aspect
          * Number of tangential mesh cells in the initial, coarse mesh.
          */
         int n_cells_along_circumference;
+
+        /**
+         * Whether to curved mapping internally
+         */
+        bool is_use_curved_mapping_internally;        
+
     };
   }
 }

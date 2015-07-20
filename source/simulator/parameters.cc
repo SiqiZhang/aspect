@@ -314,6 +314,7 @@ namespace aspect
                              " and longitude in degree.");
       }
       prm.leave_subsection();
+
       prm.declare_entry ("Fixed temperature boundary indicators", "",
                          Patterns::List (Patterns::Anything()),
                          "A comma separated list of names denoting those boundaries "
