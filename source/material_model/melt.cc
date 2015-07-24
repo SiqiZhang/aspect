@@ -23,6 +23,7 @@
 #include <aspect/material_model/melt.h>
 #include <aspect/melting.h>
 #include <aspect/simulator_access.h>
+#include <aspect/adiabatic_conditions/interface.h>
 #include <aspect/geometry_model/spherical_shell.h>
 #include <aspect/utilities.h>
 #include <deal.II/base/parameter_handler.h>
@@ -51,6 +52,21 @@ namespace aspect
     template <int dim>
     double
     Melt<dim>::
+    get_fixed_pressure(const double pressure,
+                       const Point<dim> &position) const
+    {
+      if(!(this->get_adiabatic_conditions().is_initialized()))
+          return pressure;
+      const double static_pressure=this->get_adiabatic_conditions().pressure(position);
+      if(fabs(pressure-static_pressure)>(0.1*static_pressure))
+        return static_pressure;
+      else
+        return pressure;
+    }
+
+    template <int dim>
+    double
+    Melt<dim>::
     viscosity (const double temperature,
                const double pressure,
                const std::vector<double> &composition,
@@ -59,18 +75,25 @@ namespace aspect
     {
       double viscosity;
       const double depth = (this->get_geometry_model()).depth(position);
+      const double fixed_pressure=get_fixed_pressure(pressure,position);
 
       const double strain_rate_II=std::max(std::sqrt(std::fabs(second_invariant(strain_rate))),1e-17);
+      // Apply compositional difference
+      double       viscosity_factor=1.;
+      if(viscosity_difference.size() == composition.size() && composition_factor.size()==composition.size())
+        for(unsigned i=0;i<composition.size();i++)
+          if(composition[i] >= composition_factor[i])viscosity_factor *= viscosity_difference[i];
+      // Apply partial melting effect into viscosity
+      viscosity_factor *= std::pow(exponential_melt, melt_fraction(temperature,
+                                                                   fixed_pressure,
+                                                                   composition,
+                                                                   position));
 
-      const double viscosity_diffusion_inverse   = get_viscosity_diffusion_inverse(temperature,pressure,depth);
-      const double viscosity_dislocation_inverse = get_viscosity_dislocation_inverse(temperature,pressure,strain_rate_II,depth);
-      const double viscosity_yield_inverse       = get_viscosity_yield_inverse(pressure,composition,strain_rate_II,depth);
-      const double viscosity_peierls_inverse     = get_viscosity_peierls_inverse(temperature,pressure,strain_rate_II,depth);
+      const double viscosity_diffusion_inverse   = get_viscosity_diffusion_inverse(temperature,fixed_pressure,depth)/viscosity_factor;
+      const double viscosity_dislocation_inverse = get_viscosity_dislocation_inverse(temperature,fixed_pressure,strain_rate_II,depth)/viscosity_factor;
+      const double viscosity_yield_inverse       = get_viscosity_yield_inverse(fixed_pressure,composition,strain_rate_II,depth);
+      const double viscosity_peierls_inverse     = get_viscosity_peierls_inverse(temperature,fixed_pressure,strain_rate_II,depth)/viscosity_factor;
       viscosity=1./(viscosity_diffusion_inverse + viscosity_dislocation_inverse + viscosity_yield_inverse + viscosity_peierls_inverse);
-
-       // Apply cutoff
-       //viscosity = std::max(viscosity,viscosity_cutoff_low);
-       viscosity = std::min(viscosity,viscosity_cutoff_high);
 
        /*
        double radius=sqrt(position.square());
@@ -78,18 +101,11 @@ namespace aspect
        viscosity*=std::exp(-std::log(exponential_melt)*Melt_fraction);
        */
 
-       // Apply partial melting effect into viscosity
-       viscosity*=std::pow(exponential_melt, melt_fraction(temperature, 
-                                                           pressure,
-                                                           composition,
-                                                           position));
+
+       // Apply cutoff
+       viscosity = std::min(viscosity,viscosity_cutoff_high);
        viscosity = std::max(viscosity,viscosity_cutoff_low);
 
-       // Apply compositional difference, it can go outside cutoff
-       if(viscosity_difference.size() == composition.size() && composition_factor.size()==composition.size())
-         for(unsigned i=0;i<composition.size();i++)
-           //viscosity*=pow(viscosity_difference[i],composition[i]);
-           if(composition[i] >= composition_factor[i])viscosity *= viscosity_difference[i];
        return viscosity;
     }
 
@@ -104,12 +120,13 @@ namespace aspect
     {
       const double depth = (this->get_geometry_model()).depth(position);
       const double strain_rate_II=std::max(std::sqrt(std::fabs(second_invariant(strain_rate))),1e-17);
+      const double fixed_pressure=get_fixed_pressure(pressure,position);
 
       std::vector<double> viscosity_inverse(5);
-      viscosity_inverse[0] = get_viscosity_diffusion_inverse(temperature,pressure,depth);
-      viscosity_inverse[1] = get_viscosity_dislocation_inverse(temperature,pressure,strain_rate_II,depth);
-      viscosity_inverse[2] = get_viscosity_yield_inverse(pressure,composition,strain_rate_II,depth);
-      viscosity_inverse[3] = get_viscosity_peierls_inverse(temperature,pressure,strain_rate_II,depth);
+      viscosity_inverse[0] = get_viscosity_diffusion_inverse(temperature,fixed_pressure,depth);
+      viscosity_inverse[1] = get_viscosity_dislocation_inverse(temperature,fixed_pressure,strain_rate_II,depth);
+      viscosity_inverse[2] = get_viscosity_yield_inverse(fixed_pressure,composition,strain_rate_II,depth);
+      viscosity_inverse[3] = get_viscosity_peierls_inverse(temperature,fixed_pressure,strain_rate_II,depth);
       viscosity_inverse[4] = 1./viscosity_cutoff_high;
       std::vector<double>::iterator biggest = std::max_element(viscosity_inverse.begin(), viscosity_inverse.end());
       // Return which one is the largest in four inversed viscosity values.
@@ -124,7 +141,8 @@ namespace aspect
              const std::vector<double> &compositional_fields,
              const Point<dim> &position) const
     {
-      double rho = Steinberger<dim>::density(temperature,pressure,compositional_fields,position);
+      const double fixed_pressure=get_fixed_pressure(pressure,position);
+      double rho = Steinberger<dim>::density(temperature,fixed_pressure,compositional_fields,position);
       if(density_difference.size()!=0 && density_difference.size()==compositional_fields.size())
       {
         for(unsigned i=0;i<compositional_fields.size();i++)
@@ -720,6 +738,17 @@ namespace aspect
               yield_friction                   = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Yield friction")));
               yield_composition_factor         = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Composition factor")));
               yield_stress_max                 = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Yield stress max")));
+              if(yield_stress_surface.size()==1 
+                  && yield_friction.size()==1 
+                  && yield_stress_max.size()==1)
+              {
+                is_yield_dependent_on_composition = false;                
+              }
+              else
+              {
+                is_yield_dependent_on_composition = true;
+              }
+
             }
              prm.leave_subsection();
 

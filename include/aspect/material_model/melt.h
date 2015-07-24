@@ -190,6 +190,8 @@ namespace aspect
     double get_viscosity_yield_inverse       (double pressure, const std::vector<double> &compositional_fields,double strain_rate_II, double depth) const;
     double get_viscosity_peierls_inverse     (double temperature, double pressure, double strain_rate_II, double depth) const;
 
+    double get_fixed_pressure (const double pressure, const Point<dim> &position) const;
+
       private:
     static const double R_gas = 8.341; //Gas constant.
     struct Melt_Katz::Parameters melting_parameters;
