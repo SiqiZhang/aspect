@@ -81,8 +81,19 @@ namespace aspect
       // Apply compositional difference
       double       viscosity_factor=1.;
       if(viscosity_difference.size() == composition.size() && composition_factor.size()==composition.size())
-        for(unsigned i=0;i<composition.size();i++)
-          if(composition[i] >= composition_factor[i])viscosity_factor *= viscosity_difference[i];
+      {
+        if(is_composition_distinct)
+        {
+          for(unsigned i=0;i<composition.size();i++)
+            if(composition[i] >= composition_factor[i])viscosity_factor *= viscosity_difference[i];
+        }
+        else
+        {
+          for(unsigned i=0;i<composition.size();i++)
+            viscosity_factor *= pow(viscosity_difference[i],composition[i]/composition_factor[i]);
+        }
+      }
+
       // Apply partial melting effect into viscosity
       viscosity_factor *= std::pow(exponential_melt, melt_fraction(temperature,
                                                                    fixed_pressure,
@@ -148,8 +159,15 @@ namespace aspect
         for(unsigned i=0;i<compositional_fields.size();i++)
         {
           //rho+=density_difference[i]*compositional_fields[i];
-          if(compositional_fields[i]>.5)
-            rho+=density_difference[i];
+          if(is_composition_distinct)
+          {
+            if(compositional_fields[i]>composition_factor[i])
+              rho += density_difference[i];
+          }
+          else
+          {
+            rho += density_difference[i] * compositional_fields[i]/composition_factor[i];
+          }
         }
       }
       else
@@ -327,18 +345,27 @@ namespace aspect
                   const std::vector<double> &compositional_fields,
                   const Point<dim> &position) const
     {
-      Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
-      double Mcpx,X_H2O,fraction;
-      if(i_composition_Cpx>=0 && i_composition_Cpx<(int)compositional_fields.size())
+      double fraction;
+      if(model_name=="Katz")
+      {
+        Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
+        double Mcpx,X_H2O;
+        if(i_composition_Cpx>=0 && i_composition_Cpx<(int)compositional_fields.size())
           Mcpx=std::max(0.,compositional_fields[i_composition_Cpx]);
-      else
+        else
           Mcpx=default_Cpx;
-      if(i_composition_H2O>=0 && i_composition_H2O<(int)compositional_fields.size())
+        if(i_composition_H2O>=0 && i_composition_H2O<(int)compositional_fields.size())
           X_H2O=std::max(0.,compositional_fields[i_composition_H2O]);
-      else
+        else
           X_H2O=0.;
-      //melt_calculation.get_modified_temperature(temperature,pressure,Mcpx,X_H2O,fraction);
-      fraction=melt_calculation.melt_fraction.get_melt_fraction(temperature,pressure,Mcpx,X_H2O);
+        //melt_calculation.get_modified_temperature(temperature,pressure,Mcpx,X_H2O,fraction);
+        fraction=melt_calculation.melt_fraction.get_melt_fraction(temperature,pressure,Mcpx,X_H2O);
+      }
+      if(model_name=="linear")
+      {
+
+      }
+
       return fraction;
     }
 
@@ -427,8 +454,9 @@ namespace aspect
           yield_stress += (yield_stress_surface[0]+yield_friction[0]*pressure)
                           *default_composition*yield_composition_factor[0];
           */
-          yield_stress = std::min(yield_stress_surface[0]+yield_friction[0]*pressure,
-                                  yield_stress_max[0]);
+          double yield_stress0 = std::min(yield_stress_surface[0]+yield_friction[0]*pressure,
+                                   yield_stress_max[0]);
+          yield_stress = yield_stress0;
           if( yield_stress_surface.size() == n_compositional_fields+1 &&
               yield_friction.size()       == n_compositional_fields+1 &&
               yield_stress_max.size()     == n_compositional_fields+1 &&
@@ -436,11 +464,20 @@ namespace aspect
           {
             for(unsigned i=0;i<n_compositional_fields;i++)
             {
-              if(compositional_fields[i] >= composition_factor[i])
+              if(is_composition_distinct)
               {
-                yield_stress = std::min(yield_stress_surface[i+1]+yield_friction[i+1]*pressure,
-                                        yield_stress_max[i+1]);
-                break;
+                if(compositional_fields[i] >= composition_factor[i])
+                {
+                  yield_stress = std::min(yield_stress_surface[i+1]+yield_friction[i+1]*pressure,
+                                 yield_stress_max[i+1]);
+                  break;
+                }
+              }
+              else
+              {
+                 yield_stress *= pow(std::min(yield_stress_surface[i+1]+yield_friction[i+1]*pressure,
+                                              yield_stress_max[i+1])/yield_stress0
+                                     , compositional_fields[i]/composition_factor[i]);
               }
             }
           }
@@ -465,6 +502,12 @@ namespace aspect
       {
         prm.enter_subsection("Melt model");
         {
+          prm.declare_entry ("Melting model","Katz",
+                             Patterns::Selection("Katz|linear"),
+                             "Model for calculating melt fraction.");
+          prm.declare_entry ("Composition distinct","true",
+                             Patterns::Bool (),
+                             "Whether the compositional field is treated as a distinct function or a continues function");
           prm.enter_subsection ("Viscosity");
           {
             prm.declare_entry ("Viscosity cutoff low","1e19",
@@ -497,11 +540,6 @@ namespace aspect
              prm.enter_subsection ("Yield stress");
              {
                
-               prm.declare_entry ("Composition factor", "0",
-                                  Patterns::List(Patterns::Double (0)),
-                                  "Scale factor of different composition for calculate yield stress."
-                                  "It contains list of n_compositional_field+1 factors,"
-                                  "the fist one is for default composition (0 no yield)");
                prm.declare_entry ("Yield stress surface", "1.17e8",
                                   Patterns::List(Patterns::Double ()),
                                   "Yield stress on surface for different materials, the first one is the "
@@ -603,6 +641,10 @@ namespace aspect
              prm.leave_subsection();
           }
           prm.leave_subsection();
+
+          prm.declare_entry ("Melting model","Katz",
+                             Patterns::Selection("Katz|linear"),
+                             "Model for calculating melt fraction.");
           prm.enter_subsection ("Data");
           {
             prm.declare_entry ("Solidus filename", "",
@@ -714,6 +756,8 @@ namespace aspect
       {
         prm.enter_subsection("Melt model");
         {
+          model_name                 = prm.get("Melting model");
+          is_composition_distinct    = prm.get_bool("Composition distinct");
           prm.enter_subsection ("Viscosity");
           {
             viscosity_cutoff_low  = prm.get_double ("Viscosity cutoff low");
@@ -736,7 +780,6 @@ namespace aspect
             {
               yield_stress_surface             = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Yield stress surface")));
               yield_friction                   = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Yield friction")));
-              yield_composition_factor         = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Composition factor")));
               yield_stress_max                 = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Yield stress max")));
               if(yield_stress_surface.size()==1 
                   && yield_friction.size()==1 
@@ -790,6 +833,7 @@ namespace aspect
             prm.leave_subsection();
           }
           prm.leave_subsection();
+
           prm.enter_subsection ("Data");
           {
             solidus_filename=prm.get ("Solidus filename");

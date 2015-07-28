@@ -206,12 +206,12 @@ namespace aspect
     std::vector<double> density_difference;
     std::vector<double> viscosity_difference;
     std::vector<double> composition_factor;
+    bool                is_composition_distinct;
     
     bool                is_yield_enable;
     bool                is_yield_dependent_on_composition;
     std::vector<double> yield_stress_surface;
     std::vector<double> yield_friction;
-    std::vector<double> yield_composition_factor;
     std::vector<double> yield_stress_max;
 
     bool   is_diffusion_enable;
@@ -238,6 +238,7 @@ namespace aspect
     double k_value;
     std::string solidus_filename;
     std::string liquidus_filename;
+    std::string model_name;
     double Lh;
         
     double get_viscosity_arrhenius (double temperature, double pressure, double strain_rate_II, double A, double E, double V, double n) const;
