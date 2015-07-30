@@ -103,7 +103,7 @@ namespace aspect
       // Olivine liquidus depression. (water in the units of wt%)
       // From MÃ©dard, E. and T. L. Grove (2007). "The effect of H2O on the olivine liquidus of basaltic melts: 
       // experiments and thermodynamic models." Contributions to Mineralogy and Petrology 155(4): 417-432.
-      deltaT=-(40.4*water-2.97*pow(water,2)+0.0761*pow(water,3));
+      deltaT=-(40.4*water*100.-2.97*pow(water*100.,2)+0.0761*pow(water*100.,3));
       T_solidus+=deltaT;
       T_liquidus+=deltaT;
       // Avoid solidus>liquidus
@@ -112,10 +112,10 @@ namespace aspect
       if(T<=T_solidus) 
         fraction=0.;
       else if(T>T_liquidus) 
-        fraction=100.;
+        fraction=1.;
       else 
-        fraction=(T-T_solidus)/(T_liquidus-T_solidus)*(100.-depletion);
-      /* 
+        fraction=(T-T_solidus)/(T_liquidus-T_solidus)*(1.-depletion);
+      /*
          if(T_solidus<T && T<T_liquidus)
          std::cout<<"T="<<T<<","
                   <<"P="<<p<<","
@@ -124,7 +124,8 @@ namespace aspect
                   <<"depletion="<<depletion<<","
                   <<"Ts="<<T_solidus<<","
                   <<"Tl="<<T_liquidus<<","
-					 <<"Melt_fraction="<<fraction<<std::endl;*/
+                  <<"Melt_fraction="<<fraction<<std::endl;
+                  */
       return(fraction);
     }
     double
@@ -134,7 +135,7 @@ namespace aspect
              T_liquidus=Liquidus.T(p,radius),
              deltaT;
       T_solidus+=depletion*(T_liquidus-T_solidus);
-      deltaT=-(40.4*water-2.97*pow(water,2)+0.0761*pow(water,3));
+      deltaT=-(40.4*water*100.-2.97*pow(water*100.,2)+0.0761*pow(water*100.,3));
       T_solidus+=deltaT;
       T_liquidus+=deltaT;
       return(T_solidus);
@@ -147,7 +148,7 @@ namespace aspect
              T_liquidus=Liquidus.T(p,radius),
              deltaT;
       T_solidus+=depletion*(T_liquidus-T_solidus);
-      deltaT=-(40.4*water-2.97*pow(water,2)+0.0761*pow(water,3));
+      deltaT=-(40.4*water*100.-2.97*pow(water*100.,2)+0.0761*pow(water*100.,3));
       T_solidus+=deltaT;
       T_liquidus+=deltaT;
       return(T_liquidus);

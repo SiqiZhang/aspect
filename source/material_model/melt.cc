@@ -363,7 +363,7 @@ namespace aspect
       }
       if(model_name=="linear")
       {
-
+         fraction=Data_Melt.Melting_fraction(temperature,pressure,position.norm(),0.,0.);
       }
 
       return fraction;
