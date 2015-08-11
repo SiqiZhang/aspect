@@ -140,7 +140,7 @@ namespace aspect
         Point<3> p1 = rotate.get_new_coord(p);
 
         Uc=Impacts_active[i].velocity/2.;
-        r=sqrt((Impacts_active[i].position-p1).square());
+        r=sqrt((Impacts_active[i].position-p1).norm_square());
         Rc=0.451*Impacts_active[i].radius*pow(Impacts_active[i].velocity/1.e3,0.211);
         if(r<=Rc)
         {

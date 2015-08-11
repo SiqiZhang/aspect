@@ -193,7 +193,7 @@ namespace aspect
     double get_fixed_pressure (const double pressure, const Point<dim> &position) const;
 
       private:
-    static const double R_gas = 8.341; //Gas constant.
+    //static const double R_gas = 8.341; //Gas constant.
     struct Melt_Katz::Parameters melting_parameters;
     int i_composition_Cpx;
     int i_composition_H2O;

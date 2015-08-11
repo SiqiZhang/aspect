@@ -373,6 +373,7 @@ namespace aspect
     double
     Melt<dim>::get_viscosity_arrhenius (double temperature, double pressure, double strain_rate_II, double A, double E, double V, double n) const
     {
+      const double R_gas = 8.341; //Gas constant.      
       return pow(A,-1./n)
             *exp((E+pressure*V)/(n*R_gas*temperature))
             *pow(strain_rate_II,(1.-n)/n);
