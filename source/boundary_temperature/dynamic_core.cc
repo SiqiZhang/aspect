@@ -657,7 +657,7 @@ namespace aspect
             P_Core=get_Pressure(0);
 
             // Calculate the temperature fix for adiabatic
-            if(this->get_adiabatic_conditions().is_initialized() && !this->include_adiabatic_heating())
+            if(this->get_adiabatic_conditions().is_initialized() && !this->get_material_model().is_compressible())
             {
               Point<dim> p1;
               p1(0) = spherical_shell_geometry->R0;
