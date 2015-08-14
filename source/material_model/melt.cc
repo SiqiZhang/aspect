@@ -345,6 +345,7 @@ namespace aspect
                   const std::vector<double> &compositional_fields,
                   const Point<dim> &position) const
     {
+      //TODO: When using incompressible model, calling this outside material_model will using the wrong temperature and pressure
       double fraction;
       if(model_name=="Katz")
       {

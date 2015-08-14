@@ -64,13 +64,27 @@ namespace aspect
           {
             const double pressure    = uh[q][this->introspection().component_indices.pressure];
             const double temperature = uh[q][this->introspection().component_indices.temperature];
+            double corrected_temperature,
+                   corrected_pressure;
             std::vector<double> composition(this->n_compositional_fields());
 
             for (unsigned int c=0; c<this->n_compositional_fields(); ++c)
               composition[c] = uh[q][this->introspection().component_indices.compositional_fields[c]];
             //if(pressure<10.e9 && pressure>0)
+            // Correct the temperature and pressure for incompressible case
+            if(material_model->is_compressible())
+            {
+              corrected_temperature = temperature;
+              corrected_pressure    = pressure;
+            }
+            else
+            {
+              corrected_temperature = temperature + this->get_adiabatic_conditions().temperature(evaluation_points[q]);
+              corrected_pressure    = this->get_adiabatic_conditions().pressure(evaluation_points[q]);
+            }
+              
             if(pressure>0)
-              computed_quantities[q](0) = material_model->melt_fraction(temperature,pressure,composition,evaluation_points[q]);
+              computed_quantities[q](0) = material_model->melt_fraction(corrected_temperature,corrected_pressure,composition,evaluation_points[q]);
             else
               computed_quantities[q](0) = 0.;
           }
