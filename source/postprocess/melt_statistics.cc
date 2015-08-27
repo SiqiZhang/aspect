@@ -98,7 +98,7 @@ namespace aspect
           for (unsigned int q=0; q<n_q_points; ++q)
           {
             //Melting only be extracted to surface when melting fraction > 1%
-            if(melting_fractions[q]>1.)
+            if(melting_fractions[q]>0.01)
               local_melting_integral += melting_fractions[q]*fe_values.JxW(q);
           }
         }
