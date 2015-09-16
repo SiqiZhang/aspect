@@ -349,7 +349,7 @@ namespace aspect
     double
     Dynamic_core<dim>::get_Ri(double X,double T,double R) const
     {
-        
+      /*        
         double const1,const2,a,b,c,p_ic1,p_ic2,P_ic;
         if(composition_dependency)
             const1 = Tm0*(1 - Theta*X);
@@ -366,6 +366,36 @@ namespace aspect
             return (get_r_from_p(P_ic,R));
         else
             return 0.;
+            */
+      double r0=0.,
+             r1=Rc;
+      double dT0=get_T(T,r0)-get_solidus(get_X(r0),get_Pressure(r0)),
+             dT1=get_T(T,r1)-get_solidus(get_X(r1),get_Pressure(r1));
+      //std::cout<<"R0="<<r0<<",X="<<get_X(r0)<<",Ta="<<get_T(T,r0)<<",Ts="<<get_solidus(get_X(r0),get_Pressure(r0))<<std::endl;
+      //std::cout<<"R1="<<r1<<",X="<<get_X(r1)<<",Ta="<<get_T(T,r1)<<",Ts="<<get_solidus(get_X(r1),get_Pressure(r1))<<std::endl;
+      if(dT0<=0. && dT1<=0.)
+        return Rc;
+      if(dT0>=0. && dT1>=0.)
+        return 0.;
+      for(int i=0;i<max_steps;i++)
+      {
+        double rm=(r0+r1)/2.,
+               dTm=get_T(T,rm)-get_solidus(get_X(rm),get_Pressure(rm));
+        //std::cout<<"Step:"<<i<<" dT="<<dTm<<std::endl;
+        if(dTm==0.)
+          return rm;
+        if(dTm*dT0<0.)
+        {
+          r1=rm;
+          continue;
+        }
+        if(dTm*dT1<0.)
+        {
+          r0=rm;
+          continue;
+        }
+      }
+      return (r0+r1)/2.;
     }
 
 
@@ -375,7 +405,66 @@ namespace aspect
     {
         return( 1. - get_Qlg(core_data.Ti,R)/(core_data.Q-core_data.Qr)/core_data.dt );
     }
-            
+    
+    /*
+    template <int dim>
+    void
+    Dynamic_core<dim>::solve_time_step(double &X, double &T, double &R)
+    {
+      double r0=R,
+             r1=R+(core_data.Q+core_data.Qr)*core_data.dt/(core_data.Ql+core_data.Qg);
+      if(r1<0.)r1=0.;
+      if(r1>Rc)r1=Rc;
+      double X_0,X_1;
+      double T_0,T_1;
+      double dT0=get_dT(X_0,T_0,R,r0),
+             dT1=get_dT(X_1,T_1,R,r1);
+      if(dT0<=0. && dT1<=0.) //Full freeze
+      {
+        R=r1;
+        T=T_1;
+        X=X_1;
+        return;
+      }
+      if(dT0>=0. && dT1>=0.) //Full melten
+      {
+        R=r0;
+        T=T_0;
+        X=X_0;
+        return;
+      }
+      double X_m,T_m;
+      for(int i=0;i<max_steps;i++)
+      {
+        double rm=(r0+r1)/2.,
+               dTm=get_dT(X_m,T_m,R,rm);
+        std::cout<<"Step:"<<i<<" dT="<<dTm<<std::endl;
+        if(dTm==0.)
+        {
+          R=rm;
+          X=X_m;
+          T=T_m;
+          return;
+        }
+        if(dTm*dT0<0.)
+        {
+          r1=rm;
+          continue;
+        }
+        if(dTm*dT1<0.)
+        {
+          r0=rm;
+          continue;
+        }
+      }
+      R=(r0+r1)/2.;
+      X=X_m;
+      T=T_m;
+      return;
+
+    }
+    */
+
     template <int dim>
     void
     Dynamic_core<dim>::solve_time_step(double &X, double &T, double &R)
@@ -491,13 +580,31 @@ namespace aspect
         R=get_R_loop(T,(1-a)*(core_data.Q+core_data.Qr)*core_data.dt);
         X=get_X(R);
         p=get_Pressure(R);
-        Ta=get_adiabatic(T,p);
+        Ta=get_T(T,R);
         Ts=get_solidus(X,p);
         if(R==0 && Ts<Ta)
             return 0.;
         else
             return(Ta-Ts);
     }
+    /*
+    template <int dim>
+    double
+    Dynamic_core<dim>::get_dT(double &X, double &T, double r0, double r1)
+    {
+      double p,Ta,Ts;
+      T=core_data.Ti+((core_data.Q+core_data.Qr)*core_data.dt
+                     -(core_data.Qg+core_data.Ql)*(r1-r0)
+                     )/core_data.Qs;
+      X=get_X(r1);
+      p=get_Pressure(r1);
+      Ta=get_T(T,r1);
+      Ts=get_solidus(X,p);
+      std::cout<<"Q="<<core_data.Q*core_data.dt<<", Qlg="<<(core_data.Qg+core_data.Ql)*(r1-r0)<<", Qs="<<core_data.Qs*(T-core_data.Ti)<<std::endl;
+      std::cout<<"T="<<T<<",R="<<r1<<",Ts="<<Ts<<",Ta="<<Ta<<std::endl;
+      return Ta-Ts;
+    }
+    */
 
     template <int dim>
     double
@@ -575,6 +682,13 @@ namespace aspect
         get_gravity_heating(core_data.Ti,core_data.Ri,core_data.Xi,core_data.Qg,core_data.Eg);
         get_adiabatic_heating(core_data.Ti,core_data.Ek,core_data.Qk);
         get_latent_heating(core_data.Ti,core_data.Ri,core_data.El,core_data.Ql);
+        /*
+        std::cout<<"  Q="<<core_data.Q
+                 <<",Qs="<<core_data.Qs
+                 <<",Qr="<<core_data.Qr
+                 <<",Qg="<<core_data.Qg
+                 <<",Ql="<<core_data.Ql
+                 <<std::endl;*/
     }
 
     template <int dim>
@@ -681,7 +795,7 @@ namespace aspect
         }
         else if(core_data.Q!=0.)
         {
-            double X1,R1,T1;
+            double X1,R1=core_data.Ri,T1;
             solve_time_step(X1,T1,R1);
             if(core_data.dt!=0)
             {
@@ -846,7 +960,10 @@ namespace aspect
     {
         double Cc=4*M_PI*pow(r,2)*get_Rho(r)*X/(Mc-get_Mass(r));
         double C_2=3./16.*pow(L,2)-0.5*pow(Rc,2)*(1.-3./10.*pow(Rc/L,2));
-        Qg=(8./3.*pow(M_PI*Rho_cen,2)*G*(
+        if(r==Rc)
+          Qg=0.;
+        else
+          Qg=(8./3.*pow(M_PI*Rho_cen,2)*G*(
                     ((3./20.*pow(Rc,5)-pow(L,2)*pow(Rc,3)/8.-C_2*pow(L,2)*Rc)*exp(-pow(Rc/L,2))
                        +C_2/2.*pow(L,3)*sqrt(M_PI)*erf(Rc/L))
                    -((3./20.*pow(r,5)-pow(L,2)*pow(r,3)/8.-C_2*pow(L,2)*r)*exp(-pow(r/L,2))
