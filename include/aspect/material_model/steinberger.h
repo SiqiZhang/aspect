@@ -226,6 +226,7 @@ namespace aspect
         double min_eta;
         double max_eta;
         double max_lateral_eta_variation;
+        double mantle_thermal_conductivity;
         std::string datadirectory;
         std::vector<std::string> material_file_names;
         unsigned int n_material_data;

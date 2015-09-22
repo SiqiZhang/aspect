@@ -963,6 +963,9 @@ namespace aspect
                              "The relative cutoff value for lateral viscosity variations "
                              "caused by temperature deviations. The viscosity may vary "
                              "laterally by this factor squared.");
+          prm.declare_entry ("Thermal conductivity","4.7",
+                             Patterns::Double(0),
+                             "The thermal conductivity of the mantle. Unit: W/(m*K)");
           prm.leave_subsection();
         }
         prm.leave_subsection();
@@ -1000,6 +1003,7 @@ namespace aspect
           min_eta              = prm.get_double ("Minimum viscosity");
           max_eta              = prm.get_double ("Maximum viscosity");
           max_lateral_eta_variation    = prm.get_double ("Maximum lateral viscosity variation");
+          mantle_thermal_conductivity  = prm.get_double ("Thermal conductivity");
 
           prm.leave_subsection();
         }

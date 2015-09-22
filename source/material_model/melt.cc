@@ -510,6 +510,10 @@ namespace aspect
           prm.declare_entry ("Composition distinct","true",
                              Patterns::Bool (),
                              "Whether the compositional field is treated as a distinct function or a continues function");
+          prm.declare_entry ("Thermal conductivities","",
+                             Patterns::List(Patterns::Double(0)),
+                             "The thermal conductivities of background mantle and other compostions."
+                             "If not set default value from Steinberger model. Unit: W/(m*K)");
           prm.enter_subsection ("Viscosity");
           {
             prm.declare_entry ("Viscosity cutoff low","1e19",
@@ -760,6 +764,11 @@ namespace aspect
         {
           model_name                 = prm.get("Melting model");
           is_composition_distinct    = prm.get_bool("Composition distinct");
+          k_values = dealii::Utilities::string_to_double(dealii::Utilities::split_string_list(prm.get("Thermal conductivities")));
+          if(k_values.size()>1) 
+            is_k_depends_on_composition = true;
+          else
+            is_k_depends_on_composition = false;
           prm.enter_subsection ("Viscosity");
           {
             viscosity_cutoff_low  = prm.get_double ("Viscosity cutoff low");
@@ -883,6 +892,56 @@ namespace aspect
         prm.leave_subsection();
       }
       prm.leave_subsection();
+    }
+
+    template<int dim>
+    bool
+    Melt<dim>::
+    thermal_conductivity_depends_on (const NonlinearDependence::Dependence dependence) const
+    {
+      if(is_k_depends_on_composition &&
+          (dependence & NonlinearDependence::compositional_fields) != NonlinearDependence::none)
+        return true;
+      else
+        return false;
+    }
+
+    template<int dim>
+    double
+    Melt<dim>::
+    thermal_conductivity (const double temperature,
+                          const double pressure,
+                          const std::vector<double> &compositional_fields,
+                          const Point<dim> &postion) const
+    {
+      if(k_values.size()==1)
+        return k_values[0];
+      else if(compositional_fields.size()==(k_values.size()-1))
+      {
+        double k_return=0;
+        double res_compositon=1.;
+        for(unsigned i=0;i<compositional_fields.size();i++)
+        {
+          if(is_composition_distinct)
+          {
+            if(compositional_fields[i]>composition_factor[i])
+              return k_values[i+1];
+          }
+          else
+          {
+            if(compositional_fields[i]>0)
+            {
+              double fixed_compostion=std::min(1.0,compositional_fields[i]);
+              k_return+=k_values[i+1]*fixed_compostion;
+              res_compositon-=fixed_compostion;
+            }
+          }
+        }
+        k_return+=k_values[0]*std::max(0.,res_compositon);
+        return k_return;
+      }
+      else
+        return Steinberger<dim>::thermal_conductivity(temperature,pressure,compositional_fields,postion);
     }
 
   }

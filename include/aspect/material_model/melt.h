@@ -132,6 +132,18 @@ namespace aspect
                                     const Point<dim> &position,
                                     const unsigned int compositional_variable) const;
 
+      /*
+       * Thermal conductivity dependency
+       */
+      virtual bool thermal_conductivity_depends_on (const NonlinearDependence::Dependence dependence) const;
+
+      /*
+       * Get thermal conductivity value
+       */
+      virtual double thermal_conductivity (const double temperature,
+                                           const double pressure,
+                                           const std::vector<double> &compositional_fields,
+                                           const Point<dim> &postion) const;
 
       /*
        * Get the changed temperature after melt.
@@ -235,7 +247,8 @@ namespace aspect
     double stress_exponent_peierls;
 
 
-    double k_value;
+    std::vector<double> k_values;
+    bool is_k_depends_on_composition;
     std::string solidus_filename;
     std::string liquidus_filename;
     std::string model_name;
