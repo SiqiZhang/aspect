@@ -80,7 +80,10 @@ namespace aspect
       :
         Solidus(),
         Liquidus()
-    {}
+    {
+      dP=1.e5;
+      dT=1.e-2;
+    }
 
     void Melting_data::read(const std::string solidus_file, const std::string liquidus_file)
     {
@@ -116,7 +119,7 @@ namespace aspect
       else 
         fraction=(T-T_solidus)/(T_liquidus-T_solidus)*(1.-depletion);
       /*
-         if(T_solidus<T && T<T_liquidus)
+      if(T_solidus<T && T<T_liquidus)
          std::cout<<"T="<<T<<","
                   <<"P="<<p<<","
                   <<"R="<<radius<<","
@@ -125,9 +128,10 @@ namespace aspect
                   <<"Ts="<<T_solidus<<","
                   <<"Tl="<<T_liquidus<<","
                   <<"Melt_fraction="<<fraction<<std::endl;
-                  */
+      */
       return(fraction);
     }
+
     double
     Melting_data::get_solidus(const double p, const double radius,const double water, const double depletion) const
     {
@@ -152,6 +156,22 @@ namespace aspect
       T_solidus+=deltaT;
       T_liquidus+=deltaT;
       return(T_liquidus);
+    }
+
+    double
+    Melting_data::get_melt_fraction_derivative_temperature(double T, double P, double water, double depletion) const
+    {
+      double fraction1=Melting_fraction(T-dT,P,0.,water,depletion);
+      double fraction2=Melting_fraction(T+dT,P,0.,water,depletion);
+      return (fraction2-fraction1)/dT/2.;
+    }
+
+    double
+    Melting_data::get_melt_fraction_derivative_pressure(double T, double P, double water, double depletion) const
+    {
+      double fraction1=Melting_fraction(T,P-dP,0.,water,depletion);
+      double fraction2=Melting_fraction(T,P+dP,0.,water,depletion);
+      return (fraction2-fraction1)/dP/2.;
     }
 
   }

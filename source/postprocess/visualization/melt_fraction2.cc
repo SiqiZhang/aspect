@@ -79,7 +79,8 @@ namespace aspect
             }
             else
             {
-              corrected_temperature = temperature + this->get_adiabatic_conditions().temperature(evaluation_points[q]);
+              corrected_temperature = temperature + this->get_adiabatic_conditions().temperature(evaluation_points[q])
+                                                  - this->get_adiabatic_surface_temperature();
               corrected_pressure    = this->get_adiabatic_conditions().pressure(evaluation_points[q]);
             }
               

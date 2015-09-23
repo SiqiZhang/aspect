@@ -298,22 +298,32 @@ namespace aspect
                         const Point<dim> &position,
                         const NonlinearDependence::Dependence dependence) const
     {
-      Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
-      double Mcpx,X_H2O,fraction;
-      if(i_composition_Cpx>=0 && i_composition_Cpx<(int)compositional_fields.size())
+      if(model_name=="Katz")
+      {
+        Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
+        double Mcpx,X_H2O,fraction;
+        if(i_composition_Cpx>=0 && i_composition_Cpx<(int)compositional_fields.size())
           Mcpx=std::max(0.,compositional_fields[i_composition_Cpx]);
-      else
+        else
           Mcpx=default_Cpx;
-      if(i_composition_H2O>=0 && i_composition_H2O<(int)compositional_fields.size())
+        if(i_composition_H2O>=0 && i_composition_H2O<(int)compositional_fields.size())
           X_H2O=std::max(0.,compositional_fields[i_composition_H2O]);
-      else
+        else
           X_H2O=0.;
-     if (dependence == NonlinearDependence::temperature)
-       return melt_calculation.melt_fraction.get_melt_entropy_derivative_temperature(
-           temperature,pressure,Mcpx,X_H2O);
-     else if (dependence == NonlinearDependence::pressure)
-       return melt_calculation.melt_fraction.get_melt_entropy_derivative_pressure(temperature,pressure,Mcpx,X_H2O);
-     return 0.;
+        if (dependence == NonlinearDependence::temperature)
+          return melt_calculation.melt_fraction.get_melt_entropy_derivative_temperature(
+              temperature,pressure,Mcpx,X_H2O);
+        else if (dependence == NonlinearDependence::pressure)
+          return melt_calculation.melt_fraction.get_melt_entropy_derivative_pressure(temperature,pressure,Mcpx,X_H2O);
+      }
+      if(model_name=="linear")
+      {
+        if (dependence == NonlinearDependence::temperature)
+          return Data_Melt.get_melt_fraction_derivative_temperature(temperature,pressure,0.,0.)*Lh;
+        else if (dependence == NonlinearDependence::pressure)
+          return Data_Melt.get_melt_fraction_derivative_pressure(temperature,pressure,0.,0.)*Lh;
+      }
+      return 0.;
     }
 
     template <int dim>
@@ -363,9 +373,7 @@ namespace aspect
         fraction=melt_calculation.melt_fraction.get_melt_fraction(temperature,pressure,Mcpx,X_H2O);
       }
       if(model_name=="linear")
-      {
          fraction=Data_Melt.Melting_fraction(temperature,pressure,position.norm(),0.,0.);
-      }
 
       return fraction;
     }

@@ -852,6 +852,18 @@ namespace aspect
     }
 
     template <int dim>
+    double
+    Steinberger<dim>::
+    entropy_derivative (const double,
+                        const double,
+                        const std::vector<double> &,
+                        const Point<dim> &,
+                        const NonlinearDependence::Dependence) const
+    {
+      return 0.0;
+    }
+
+    template <int dim>
     void
     Steinberger<dim>::evaluate(const MaterialModel::MaterialModelInputs<dim> &in,
                                MaterialModel::MaterialModelOutputs<dim> &out) const
@@ -892,8 +904,8 @@ namespace aspect
           out.specific_heat[i]                  = specific_heat                 (temperature, pressure, in.composition[i], in.position[i]);
           out.thermal_conductivities[i]         = thermal_conductivity          (temperature, pressure, in.composition[i], in.position[i]);
           out.compressibilities[i]              = compressibility               (temperature, pressure, in.composition[i], in.position[i]);
-          out.entropy_derivative_pressure[i]    = 0;
-          out.entropy_derivative_temperature[i] = 0;
+          out.entropy_derivative_pressure[i]    = entropy_derivative            (temperature, pressure, in.composition[i], in.position[i], NonlinearDependence::pressure);
+          out.entropy_derivative_temperature[i] = entropy_derivative            (temperature, pressure, in.composition[i], in.position[i], NonlinearDependence::temperature);
           for (unsigned int c=0; c<in.composition[i].size(); ++c)
             out.reaction_terms[i][c]            = 0;
         }

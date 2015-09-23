@@ -84,7 +84,6 @@ namespace aspect
         virtual bool
         density_depends_on (const NonlinearDependence::Dependence dependence) const;
 
-
         /**
          * @name Auxiliary material properties used for postprocessing
          * @{
@@ -95,6 +94,7 @@ namespace aspect
                                          const std::vector<double> &compositional_fields,
                                          const Point<dim> &position,
                                          std::vector<double> &new_compositional_fields) const;
+
 
       /**
        * Return the product of the change in entropy across phase

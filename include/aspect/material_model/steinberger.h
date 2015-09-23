@@ -112,6 +112,33 @@ namespace aspect
                                    const std::vector<double> &compositional_fields,
                                    const Point<dim> &position) const;
         /**
+         * Return the product of the change in entropy across phase
+         * transitions, the pressure derivative of the phase function
+         * (if this is the pressure derivative) or the product of the
+         * former two and the Clapeyron slope (if this is the
+         * temperature derivative).
+         * The entropy change across a phase transition can be calculated
+         * as $\frac{\gamma \Delta\rho}{\rho_\text{light} \rho_\text{heavy}}$.
+         * $\gamma$ is the Clapeyron slope of the phase transition,
+         * $\Delta\rho$ is the density jump across the phase transition,
+         * $\rho_\text{light}$ is the density of the light material
+         * (above the phase transition) and $\rho_\text{heavy}$ the
+         * density of the heavy material (below the phase transition).
+         * The phase function hat values ranging from 0 to 1 indicating
+         * which percentage of the material has already undergone the phase
+         * transition. Its argument is usually the excess pressure
+         * $\pi = p - p_0 - \gamma T$, where $p_0$ is the zero-degree
+         * transition pressure.
+         *
+         * This function has a default implementation that sets
+         * the entropy gradient to zero (assuming no phase changes).
+         */
+        virtual double entropy_derivative (const double      temperature,
+                                           const double      pressure,
+                                           const std::vector<double> &compositional_fields,
+                                           const Point<dim> &position,
+                                           const NonlinearDependence::Dependence dependence) const; 
+        /**
          * @}
          */
 

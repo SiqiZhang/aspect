@@ -85,7 +85,8 @@ namespace aspect
             }
             else
             {
-              corrected_temperature = temperature[q] + this->get_adiabatic_conditions().temperature(fe_values.quadrature_point(q));
+              corrected_temperature = temperature[q] + this->get_adiabatic_conditions().temperature(fe_values.quadrature_point(q))
+                                                     - this->get_adiabatic_surface_temperature();
               corrected_pressure    = this->get_adiabatic_conditions().pressure(fe_values.quadrature_point(q));
             }
 
