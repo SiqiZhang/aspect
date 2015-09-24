@@ -319,9 +319,9 @@ namespace aspect
       if(model_name=="linear")
       {
         if (dependence == NonlinearDependence::temperature)
-          return Data_Melt.get_melt_fraction_derivative_temperature(temperature,pressure,0.,0.)*Lh;
+          return -Data_Melt.get_melt_fraction_derivative_temperature(temperature,pressure,0.,0.)*Lh/temperature;
         else if (dependence == NonlinearDependence::pressure)
-          return Data_Melt.get_melt_fraction_derivative_pressure(temperature,pressure,0.,0.)*Lh;
+          return -Data_Melt.get_melt_fraction_derivative_pressure(temperature,pressure,0.,0.)*Lh/temperature;
       }
       return 0.;
     }
