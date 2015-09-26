@@ -49,27 +49,40 @@ namespace aspect
         time/=year_in_seconds;
       double timedependent_radioactive_heating_rates=0;
       if (n_radio_heating_elements!=0)
+      {
+        double crust_fraction=0;
+        if (is_crust_defined_by_composition)
         {
-          double crust_fraction=0;
-          if (is_crust_defined_by_composition)
-            {
-              AssertThrow(crust_composition_num < composition.size(), ExcMessage("The composition number of crust is "
-                                                                                 " larger than number of composition fields."));
-              crust_fraction=composition[crust_composition_num];
-              if (crust_fraction<0)crust_fraction=0;
-              if (crust_fraction>1)crust_fraction=1;
-            }
-          else if ((this->get_geometry_model()).depth(position) < crust_depth)
-            crust_fraction=1.;
-
-          for (unsigned i_radio=0; i_radio<n_radio_heating_elements; i_radio++)
-            timedependent_radioactive_heating_rates+=
-              radioactive_heating_rates[i_radio]
-              *(radioactive_initial_concentrations_mantle[i_radio]*(1-crust_fraction)
-                +radioactive_initial_concentrations_crust[i_radio]*crust_fraction)*1e-6
-              //1e-6 above is used to change concentration from ppm
-              *std::pow(0.5,time/half_decay_times[i_radio]);
+          AssertThrow(crust_composition_num < composition.size(), ExcMessage("The composition number of crust is "
+                                                                             " larger than number of composition fields."));
+          crust_fraction=composition[crust_composition_num];
+          if (crust_fraction<0)crust_fraction=0;
+          if (crust_fraction>1)crust_fraction=1;
         }
+        else if ((this->get_geometry_model()).depth(position) < crust_depth)
+          crust_fraction=1.;
+
+        for (unsigned i_radio=0; i_radio<n_radio_heating_elements; i_radio++)
+          timedependent_radioactive_heating_rates+=
+            radioactive_heating_rates[i_radio]
+            *(radioactive_initial_concentrations_mantle[i_radio]*(1-crust_fraction)
+                +radioactive_initial_concentrations_crust[i_radio]*crust_fraction)*1e-6
+            //1e-6 above is used to change concentration from ppm
+            *std::pow(0.5,time/half_decay_times[i_radio]);
+      }
+      if(heating_factor_composition.size()==composition.size())
+      {
+        double composition_rest=1.;
+        double heating_factor=0.;
+        for(unsigned c=0;c<composition.size();c++)
+        {
+          double c_i=std::min(1.,std::max(0.,composition[c]));
+          composition_rest-=c_i;
+          heating_factor+=heating_factor_composition[c]*c_i;
+        }
+        heating_factor+=std::max(0.,composition_rest);
+        timedependent_radioactive_heating_rates*=heating_factor;
+      }
       return (timedependent_radioactive_heating_rates);
     }
 
@@ -107,6 +120,9 @@ namespace aspect
           prm.declare_entry("Crust composition number","0",
                             Patterns::Integer(0),
                             "Which composition field should be treated as crust");
+          prm.declare_entry("Heating factor compostion","",
+                            Patterns::List (Patterns::Double ()),
+                            "Heatinf factor for different composition");
         }
         prm.leave_subsection();
       }
@@ -155,6 +171,8 @@ namespace aspect
           is_crust_defined_by_composition = prm.get_bool    ("Crust defined by composition");
           crust_depth                     = prm.get_double  ("Crust depth");
           crust_composition_num           = prm.get_integer ("Crust composition number");
+          heating_factor_composition      = Utilities::string_to_double
+                                          ( Utilities::split_string_list(prm.get("Heating factor compostion")));
         }
         prm.leave_subsection();
       }

@@ -114,6 +114,11 @@ namespace aspect
          * Composition number of crust.
          */
         unsigned int                   crust_composition_num;
+
+        /**
+         * Heating factor for different composition
+         */
+        std::vector<double>            heating_factor_composition;
     };
   }
 }
