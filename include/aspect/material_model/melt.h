@@ -209,6 +209,7 @@ namespace aspect
     struct Melt_Katz::Parameters melting_parameters;
     int i_composition_Cpx;
     int i_composition_H2O;
+    int i_composition_depletion;
     double default_Cpx;
 
     double exponential_melt;

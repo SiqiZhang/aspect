@@ -128,7 +128,7 @@ namespace aspect
                   <<"Ts="<<T_solidus<<","
                   <<"Tl="<<T_liquidus<<","
                   <<"Melt_fraction="<<fraction<<std::endl;
-      */
+                  */
       return(fraction);
     }
 
