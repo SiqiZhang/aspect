@@ -127,7 +127,7 @@ namespace aspect
       double dT=0.;
       const double C=7.24e3,
                    S=1.25,
-                   Cp=1e3,
+                   Cp=1.25e3,
                    Rho0=3.5e3;
 
       double Beta,f,Ps,Pd,Rc,r,Uc;
@@ -148,14 +148,20 @@ namespace aspect
           //std::cout<<"["<<p<<"],["<<p1<<"] r="<<r<<std::endl;
         }
         else
+	{
           //Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,-1.84+2.61*log10(Impacts_active[i].velocity/1.e3));
-          Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,1.25+0.625*log10(Impacts_active[i].velocity/1.e3));
-        Pd=Ps-pressure;
+	  Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,-1.68+2.74*log10(Uc/1.e3));
+          //Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,1.25+0.625*log10(Impacts_active[i].velocity/1.e3));
+	}
+        Pd=Ps;
         if(Pd>0.)
         {
-          Beta=pow(C,2)*Rho0/(2.*S);
-          f=-Pd/Beta/(1-sqrt(2.*Pd/Beta+1.));
-          dT+=(Pd/(2.*Rho0*S)*(1.-1./f)-pow(C/S,2)*(f-log(f)-1))/Cp;
+          //Beta=pow(C,2)*Rho0/(2.*S);
+          //f=-Pd/Beta/(1-sqrt(2.*Pd/Beta+1.));
+	  f= -2*S*Pd/(C*C*Rho0) * pow((1 - sqrt(4*S*Pd/(C*C*Rho0) + 1.0)),-1);
+          //dT+=(Pd/(2.5*Rho0*S)*(1.-1./f)-pow(C/S,2)*(f-log(f)-1))/Cp;
+	   /// Check ln vs log
+          dT+=(Pd/(2.5*Rho0*S)*(1.-1./f)-pow(C/S,2)*(f-log(f)-1))/Cp;
         }
       }
       //if(dT==0)return(temperature);
