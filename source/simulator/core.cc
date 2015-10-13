@@ -177,7 +177,7 @@ namespace aspect
 
     rebuild_stokes_matrix (true),
     rebuild_stokes_preconditioner (true),
-    impacts()
+    impacts(*this)
   {
     // FE data is no longer needed because we constructed finite_element above
     introspection.free_finite_element_data();

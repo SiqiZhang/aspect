@@ -83,12 +83,21 @@ namespace aspect
     {
       dP=1.e5;
       dT=1.e-2;
+      initialized=false;
+    }
+
+    bool
+    Melting_data::is_initialized() const
+    {
+      return initialized;
     }
 
     void Melting_data::read(const std::string solidus_file, const std::string liquidus_file)
     {
       Solidus.read(solidus_file);
       Liquidus.read(liquidus_file);
+      if(Solidus.Num_points>0 && Liquidus.Num_points>0)
+        initialized=true;
     }
 
     double

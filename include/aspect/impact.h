@@ -5,6 +5,8 @@
 #include <deal.II/base/std_cxx1x/array.h>
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/tensor.h>
+#include <aspect/melting.h>
+#include <aspect/simulator_access.h>
 
 using namespace dealii;
 namespace aspect
@@ -60,10 +62,11 @@ namespace aspect
     }
 
     template<int dim>
-    class ImpactFunction
+    class ImpactFunction : public aspect::SimulatorAccess<dim>
     {
       public:
         ImpactFunction();
+        ImpactFunction(const Simulator<dim> &simulator_object);
         void Initialize(const std::string &filename,
                         double time0, 
                         double R0,

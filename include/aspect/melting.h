@@ -37,6 +37,9 @@ namespace aspect
         double get_liquidus(const double p, const double radius,const double water, const double depletion) const;
         double get_melt_fraction_derivative_temperature(double T, double P, double water, double depletion) const;
         double get_melt_fraction_derivative_pressure(double T, double P, double water, double depletion) const;
+        bool is_initialized() const;
+      private:
+        bool initialized;
     };
   }
 

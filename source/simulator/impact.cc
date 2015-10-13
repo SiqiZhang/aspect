@@ -1,7 +1,9 @@
 #include <aspect/impact.h>
 #include <aspect/global.h>
-
 #include <aspect/simulator.h>
+#include <aspect/material_model/melt.h>
+#include <aspect/simulator_access.h>
+
 #include <deal.II/base/point.h>
 #include <deal.II/fe/fe_values.h>
 
@@ -17,6 +19,14 @@ namespace aspect
     ImpactFunction<dim>::ImpactFunction()
     :
       rotate()
+    {
+    }
+
+    template<int dim>
+    ImpactFunction<dim>::ImpactFunction(const Simulator<dim> &simulator_object)
+    :
+    SimulatorAccess<dim>(simulator_object),
+    rotate()
     {
     }
     
@@ -148,29 +158,38 @@ namespace aspect
           //std::cout<<"["<<p<<"],["<<p1<<"] r="<<r<<std::endl;
         }
         else
-	{
+        {
           //Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,-1.84+2.61*log10(Impacts_active[i].velocity/1.e3));
-	  Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,-1.68+2.74*log10(Uc/1.e3));
+          Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,-1.68+2.74*log10(Uc/1.e3));
           //Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,1.25+0.625*log10(Impacts_active[i].velocity/1.e3));
-	}
+        }
         Pd=Ps;
         if(Pd>0.)
         {
           //Beta=pow(C,2)*Rho0/(2.*S);
           //f=-Pd/Beta/(1-sqrt(2.*Pd/Beta+1.));
-	  f= -2*S*Pd/(C*C*Rho0) * pow((1 - sqrt(4*S*Pd/(C*C*Rho0) + 1.0)),-1);
+          f= -2*S*Pd/(C*C*Rho0) * pow((1 - sqrt(4*S*Pd/(C*C*Rho0) + 1.0)),-1);
           //dT+=(Pd/(2.5*Rho0*S)*(1.-1./f)-pow(C/S,2)*(f-log(f)-1))/Cp;
-	   /// Check ln vs log
+          /// Check ln vs log
           dT+=(Pd/(2.5*Rho0*S)*(1.-1./f)-pow(C/S,2)*(f-log(f)-1))/Cp;
         }
       }
       //if(dT==0)return(temperature);
       //std::cout<<"["<<p<<"] r="<<r<<", Pd="<<Pd<<",T0="<<temperature<<",dT="<<dT<<std::endl;
       double T_solid;
-      if(pressure <12.e9)
-        T_solid=1374.+130.e-9*pressure-5.6e-18*pow(pressure,2);
+      const MaterialModel::Melt<dim> *material_model=dynamic_cast<const MaterialModel::Melt<dim> *>(&(this->get_material_model()));
+      AssertThrow(material_model != 0,ExcMessage("This impact module can only be worked with Melt material model."));
+      
+      if(material_model->Data_Melt.is_initialized())
+        T_solid=material_model->Data_Melt.get_solidus(pressure,sqrt(p.square()),0,0);
       else
-        T_solid=1374.+130.e-9*12.e9-5.6e-18*pow(12.e9,2)+(pressure-12.e9)*15.e-9;
+      {      
+        if(pressure <12.e9)
+          T_solid=1374.+130.e-9*pressure-5.6e-18*pow(pressure,2);
+        else
+          T_solid=1374.+130.e-9*12.e9-5.6e-18*pow(12.e9,2)+(pressure-12.e9)*15.e-9;
+      }
+
       if(temperature+dT>T_solid)
         return(std::max(T_solid,temperature));
       else
