@@ -92,7 +92,6 @@ namespace aspect
     template <int dim>
     class Dynamic_core : public Interface<dim>, public aspect::SimulatorAccess<dim>
     {
-      friend class Postprocess::DynamicCoreStatistics<dim>;
       public:
         /** 
          * Construstor
@@ -159,21 +158,24 @@ namespace aspect
          */
         virtual void update();
 
+        /**
+         * Pass core data to other modules
+         */
+        struct _Core_Data get_core_data() const;
 
+        /**
+         * Set core data
+         */
+        void set_core_data(const struct _Core_Data &core_data);
 
-      protected:
+      private:
+
         /**
          * Data for core energy balance
          * it get updated each time step.
          */
         struct _Core_Data core_data;
-        
-        /**
-         * Get read access for the core energy balance data.
-         * For example used in postprocess to access these data.
-         */
-        const struct _Core_Data* get_core_data() const;
-      private:
+
         /**
          * Temperatures at the inner boundaries.
          */

@@ -692,10 +692,17 @@ namespace aspect
     }
 
     template <int dim>
-    const struct _Core_Data*
+    struct _Core_Data
     Dynamic_core<dim>::get_core_data() const
     {
-        return &core_data;
+        return core_data;
+    }
+
+    template <int dim>
+    void
+    Dynamic_core<dim>::set_core_data(const struct _Core_Data &core_data)
+    {
+      this->core_data=core_data;
     }
 
     template <int dim>
