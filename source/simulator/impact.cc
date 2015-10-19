@@ -174,6 +174,9 @@ namespace aspect
           dT+=(Pd/(2.5*Rho0*S)*(1.-1./f)-pow(C/S,2)*(f-log(f)-1))/Cp;
         }
       }
+      if(dT < 0.0) {
+        dT = 0.0;
+      }
       //if(dT==0)return(temperature);
       //std::cout<<"["<<p<<"] r="<<r<<", Pd="<<Pd<<",T0="<<temperature<<",dT="<<dT<<std::endl;
       double T_solid;

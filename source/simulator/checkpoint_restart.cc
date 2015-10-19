@@ -71,6 +71,8 @@ namespace aspect
 
     int error_file=0;
     static bool previous_snapshot_exists = (parameters.resume_computation == true);
+    std::string str_time_step = std::to_string(timestep_number);
+    /*
     if (my_id == 0)
     {
       // if we have previously written a snapshot, then keep the last
@@ -85,12 +87,13 @@ namespace aspect
 
         if(error_file_exist==true)
         {
+          std::string str_time_step = std::to_string(timestep_number);
           error_file += move_file (parameters.output_directory + "restart.mesh",
-              parameters.output_directory + "restart.mesh.old");
+              parameters.output_directory + "restart.mesh."+str_time_step);
           error_file += move_file (parameters.output_directory + "restart.mesh.info",
-              parameters.output_directory + "restart.mesh.info.old");
+              parameters.output_directory + "restart.mesh.info."+str_time_step);
           error_file += move_file (parameters.output_directory + "restart.resume.z",
-              parameters.output_directory + "restart.resume.z.old");
+              parameters.output_directory + "restart.resume.z."+str_time_step);
         }
         else
           error_file=1;
@@ -107,6 +110,7 @@ namespace aspect
       else
         throw QuietException();
     }
+    */
 
 
     // save Triangulation and Solution vectors:
@@ -121,7 +125,7 @@ namespace aspect
 
       system_trans.prepare_serialization (x_system);
 
-      triangulation.save ((parameters.output_directory + "restart.mesh").c_str());
+      triangulation.save ((parameters.output_directory +  str_time_step + ".restart.mesh" ).c_str());
     }
 
     // save general information This calls the serialization functions on all
@@ -156,7 +160,7 @@ namespace aspect
                 (uint32_t)compressed_data_length
               }; /* list of compressed sizes of blocks */
 
-          std::ofstream f ((parameters.output_directory + "restart.resume.z").c_str());
+          std::ofstream f ((parameters.output_directory + str_time_step + ".restart.resume.z").c_str());
           f.write((const char *)compression_header, 4 * sizeof(compression_header[0]));
           f.write((char *)&compressed_data[0], compressed_data_length);
         }
@@ -169,6 +173,7 @@ namespace aspect
 
     }
     // Check if all restart file was created
+    /*
     {
       if(my_id == 0)
       {
@@ -192,6 +197,7 @@ namespace aspect
           throw QuietException();
       }
     }
+    */
 
 
     pcout << "*** Snapshot created!" << std::endl << std::endl;
