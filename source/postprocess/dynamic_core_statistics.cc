@@ -37,6 +37,7 @@ namespace aspect
     template <int dim>
     DynamicCoreStatistics<dim>::DynamicCoreStatistics()
     {
+      initialized=false;
       set_CMB_heat_flux(0.0);
     }
 
@@ -52,6 +53,13 @@ namespace aspect
     DynamicCoreStatistics<dim>::set_CMB_heat_flux(double heat_flux)
     {
       CMB_heat_flux=heat_flux;
+    }
+
+    template <int dim>
+    bool
+    DynamicCoreStatistics<dim>::is_initialized() const
+    {
+      return initialized;
     }
 
     template <int dim>
@@ -200,6 +208,7 @@ namespace aspect
              p != boundary_indicators.end(); ++p, ++index)
           global_boundary_fluxes[*p] = global_values[index];
         set_CMB_heat_flux(-global_boundary_fluxes[0]*scale_factor_2D_shell);
+        initialized = true;
       }
 
       // now add all of the computed heat fluxes to the statistics object

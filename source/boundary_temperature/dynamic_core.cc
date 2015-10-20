@@ -299,6 +299,7 @@ namespace aspect
     void
     Dynamic_core<dim>::read_data_OES()
     {
+      data_OES.clear();
       FILE *fp=fopen(name_OES.c_str(),"r");
       if(fp!=NULL)
       {
@@ -695,7 +696,15 @@ namespace aspect
     struct _Core_Data
     Dynamic_core<dim>::get_core_data() const
     {
-        return core_data;
+      // Update from the postprocess before return;
+      struct _Core_Data core_data_return=core_data;
+      const Postprocess::DynamicCoreStatistics<dim> * dynamic_core_statistics              
+            = this->template find_postprocessor<const Postprocess::DynamicCoreStatistics<dim> >();
+      AssertThrow(dynamic_core_statistics!=NULL,                                           
+              ExcMessage ("Dynamic core boundary condition has to work with dynamic core statistics postprocessor."));
+      core_data_return.Q = dynamic_core_statistics->get_CMB_heat_flux();
+
+      return core_data_return;
     }
 
     template <int dim>
@@ -703,6 +712,32 @@ namespace aspect
     Dynamic_core<dim>::set_core_data(const struct _Core_Data &core_data)
     {
       this->core_data=core_data;
+      read_data_OES();
+      const GeometryModel::SphericalShell<dim>* spherical_shell_geometry =
+        dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&(this->get_geometry_model()));
+      AssertThrow (spherical_shell_geometry != NULL,
+                   ExcMessage ("This boundary model is only implemented if the geometry is "
+                               "in fact a spherical shell."));
+      Rc=spherical_shell_geometry->R0;
+      Mc=get_Mass(Rc);
+      P_Core=get_Pressure(0);
+      
+      // Calculate the temperature fix for adiabatic
+      if(this->get_adiabatic_conditions().is_initialized() && !this->get_material_model().is_compressible())
+      {
+        Point<dim> p1;
+        p1(0) = spherical_shell_geometry->R0;
+        dTa = this->get_adiabatic_conditions().temperature(p1)
+            - this->get_adiabatic_surface_temperature();
+      }
+      else
+        dTa = 0.;
+
+      this->core_data.dt    = this->get_timestep();
+      this->core_data.H     = get_radioheating_rate();
+      update_core_data();
+
+      is_first_call=false; 
     }
 
     template <int dim>
@@ -760,11 +795,13 @@ namespace aspect
         AssertThrow(dynamic_core_statistics!=NULL,
             ExcMessage ("Dynamic core boundary condition has to work with dynamic core statistics postprocessor."));
         
-        core_data.Q     = dynamic_core_statistics->get_CMB_heat_flux();
+        if(dynamic_core_statistics->is_initialized())
+          core_data.Q     = dynamic_core_statistics->get_CMB_heat_flux();
         core_data.Q_OES = get_OES(this->get_time());
         core_data.Q    -= core_data.Q_OES;
         core_data.dt    = this->get_timestep();
         core_data.H     = get_radioheating_rate();
+        
         if(is_first_call==true)
         {
           read_data_OES();

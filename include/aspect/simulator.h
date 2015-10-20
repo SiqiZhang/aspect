@@ -58,6 +58,8 @@
 #include <aspect/postprocess/interface.h>
 #include <aspect/adiabatic_conditions/interface.h>
 
+#include<aspect/boundary_temperature/dynamic_core.h>
+
 #include <boost/iostreams/tee.hpp>
 #include <boost/iostreams/stream.hpp>
 
@@ -1457,6 +1459,11 @@ namespace aspect
        */
       void set_impacts();
       impact::ImpactFunction<dim> impacts;
+
+      /**
+       * Core data
+       */
+      struct BoundaryTemperature::_Core_Data core_restart;
       
       /**
        * Change compositional field due to depletaion

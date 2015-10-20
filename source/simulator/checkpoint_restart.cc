@@ -21,6 +21,7 @@
 
 #include <aspect/simulator.h>
 #include <aspect/postprocess/visualization.h>
+#include <aspect/boundary_temperature/dynamic_core.h>
 
 #include <deal.II/base/mpi.h>
 #include <deal.II/grid/grid_tools.h>
@@ -29,6 +30,9 @@
 #ifdef DEAL_II_WITH_ZLIB
 #  include <zlib.h>
 #endif
+
+#include <sstream>
+#include <string>
 
 namespace aspect
 {
@@ -71,7 +75,8 @@ namespace aspect
 
     int error_file=0;
     static bool previous_snapshot_exists = (parameters.resume_computation == true);
-    std::string str_time_step = std::to_string(timestep_number);
+    //std::string str_time_step = std::to_string<unsigned>(timestep_number);
+    std::string str_time_step = static_cast<std::ostringstream*>( &(std::ostringstream() << (timestep_number-1)) )->str();
     /*
     if (my_id == 0)
     {
@@ -132,8 +137,14 @@ namespace aspect
     // processes (so that they can take additional action, if necessary, see
     // the manual) but only writes to the restart file on process 0
     {
+
       std::ostringstream oss;
 
+      // If working with dynamic core
+      BoundaryTemperature::Dynamic_core<dim> * dynamic_core_boundary
+        = dynamic_cast<BoundaryTemperature::Dynamic_core<dim> *> (boundary_temperature.get());
+      if(dynamic_core_boundary!=NULL)
+        core_restart=dynamic_core_boundary->get_core_data();
       // serialize into a stringstream
       aspect::oarchive oa (oss);
       oa << (*this);
@@ -303,6 +314,12 @@ namespace aspect
           ss.str(std::string (&uncompressed[0], uncompressed_size));
           aspect::iarchive ia (ss);
           ia >> (*this);
+          
+          // If working with dynamic core
+          BoundaryTemperature::Dynamic_core<dim> * dynamic_core_boundary
+            = dynamic_cast<BoundaryTemperature::Dynamic_core<dim> *> (boundary_temperature.get());
+          if(dynamic_core_boundary!=NULL)
+            dynamic_core_boundary->set_core_data(core_restart);
         }
 #else
         AssertThrow (false,
@@ -322,13 +339,6 @@ namespace aspect
                                  +
                                  ">"));
       }
-    // Force to re-write the mesh
-    {
-      Postprocess::Visualization<dim> * visualization
-        = this->postprocess_manager.template find_postprocessor<Postprocess::Visualization<dim> >();
-      if(visualization!=NULL)
-        visualization->mesh_changed_signal();
-    }
   }
 
 }
@@ -349,6 +359,15 @@ namespace aspect
     ar &time_step;
     ar &old_time_step;
     ar &timestep_number;
+    
+    // Core data
+    ar &(core_restart.Ti);
+    ar &(core_restart.Ri);
+    ar &(core_restart.Xi);
+    ar &(core_restart.Q);
+    ar &(core_restart.dR_dt);
+    ar &(core_restart.dT_dt);
+    ar &(core_restart.dX_dt);
 
     ar &postprocess_manager &statistics;
 
