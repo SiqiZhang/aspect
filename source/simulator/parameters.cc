@@ -73,6 +73,10 @@ namespace aspect
                        Patterns::Bool (),
                        "A flag indicating whether the computation should be resumed from "
                        "a previously saved state (if true) or start from scratch (if false).");
+    prm.declare_entry ("Checkpoint number", "-1",
+                       Patterns::Integer (),
+                       "Which checkpoint number you want to resume from. If not set, "
+                       "the default restart file without checkpoint number will be used.");
 
 #ifndef DEAL_II_WITH_ZLIB
     AssertThrow (resume_computation == false,
@@ -721,6 +725,7 @@ namespace aspect
                  ExcInternalError());
 
     resume_computation      = prm.get_bool ("Resume computation");
+    resume_step_num         = prm.get_integer ("Checkpoint number");
     CFL_number              = prm.get_double ("CFL number");
     use_conduction_timestep = prm.get_bool ("Use conduction timestep");
     convert_to_years        = prm.get_bool ("Use years in output instead of seconds");

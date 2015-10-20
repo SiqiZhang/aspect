@@ -222,11 +222,14 @@ namespace aspect
 
 
   template <int dim>
-  void Simulator<dim>::resume_from_snapshot()
+  void Simulator<dim>::resume_from_snapshot(int resume_step_num)
   {
+    std::string str_time_step;
+    if(resume_step_num>0)
+      str_time_step = static_cast<std::ostringstream*>( &(std::ostringstream() << (resume_step_num)) )->str() + ".";
     // first check existence of the two restart files
     {
-      const std::string filename = parameters.output_directory + "restart.mesh";
+      const std::string filename = parameters.output_directory + str_time_step + "restart.mesh";
       std::ifstream in (filename.c_str());
       if (!in)
         AssertThrow (false,
@@ -238,7 +241,7 @@ namespace aspect
                                  "> does not appear to exist!"));
     }
     {
-      const std::string filename = parameters.output_directory + "restart.resume.z";
+      const std::string filename = parameters.output_directory + str_time_step + "restart.resume.z";
       std::ifstream in (filename.c_str());
       if (!in)
         AssertThrow (false,
@@ -254,7 +257,7 @@ namespace aspect
 
     try
       {
-        triangulation.load ((parameters.output_directory + "restart.mesh").c_str());
+        triangulation.load ((parameters.output_directory + str_time_step + "restart.mesh").c_str());
       }
     catch (...)
       {
@@ -289,7 +292,7 @@ namespace aspect
     try
       {
 #ifdef DEAL_II_WITH_ZLIB
-        std::ifstream ifs ((parameters.output_directory + "restart.resume.z").c_str());
+        std::ifstream ifs ((parameters.output_directory + str_time_step + "restart.resume.z").c_str());
         AssertThrow(ifs.is_open(),
                     ExcMessage("Cannot open snapshot resume file."));
 
@@ -380,7 +383,7 @@ namespace aspect
 {
 #define INSTANTIATE(dim) \
   template void Simulator<dim>::create_snapshot(); \
-  template void Simulator<dim>::resume_from_snapshot();
+  template void Simulator<dim>::resume_from_snapshot(int resume_step_num);
 
   ASPECT_INSTANTIATE(INSTANTIATE)
 }

@@ -163,6 +163,7 @@ namespace aspect
 
     double                         nonlinear_tolerance;
     bool                           resume_computation;
+    int                            resume_step_num;
     double                         start_time;
     double                         CFL_number;
     double                         maximum_time_step;

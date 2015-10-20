@@ -1968,7 +1968,7 @@ namespace aspect
     // start-up
     if (parameters.resume_computation == true)
       {
-        resume_from_snapshot();
+        resume_from_snapshot(parameters.resume_step_num);
         // we need to remove additional_refinement_times that are in the past
         // and adjust max_refinement_level which is not written to file
         while ((parameters.additional_refinement_times.size() > 0)

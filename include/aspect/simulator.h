@@ -497,7 +497,7 @@ namespace aspect
        * This function is implemented in
        * <code>source/simulator/checkpoint_restart.cc</code>.
        */
-      void resume_from_snapshot();
+      void resume_from_snapshot(int resume_step_num);
 
       /**
        * Save a number of variables using BOOST serialization mechanism.
