@@ -5,8 +5,9 @@ set End time                               = 300e6
 set Linear solver tolerance                = 1e-6    
 set Nonlinear solver scheme                = IMPES
 set Number of cheap Stokes solver steps    = 0        
-set Output directory                       = impact
-set Resume computation                     = false
+set Output directory                       = impact2
+#set Resume computation                     = true
+#set Checkpoint number                      = 18
 set Start time                             = 200e6 
 set Surface pressure                       = 1.0e5  
 set Use years in output instead of seconds = true
@@ -68,7 +69,9 @@ subsection Initial conditions
       set Lateral wave number two         = 6     
       set Lithosphere thickness amplitude = 80e3  
     end
-
+    subsection Data
+      set Solidus filename = data/material-model/solidus/solidus.Mars1
+    end
   end
 end
 
@@ -116,6 +119,11 @@ subsection Material model
         set Yield stress surface     = 5e6  
       end
     end
+    subsection Data
+      #set Solidus filename = data/material-model/solidus/solidus.Mars1
+      #set Liquidus filename = data/material-model/solidus/liquidus.Mars1
+      set Latent heat = 0.0 #6.4e5 #J/kg
+    end
   end
 
   subsection Steinberger model
@@ -149,10 +157,10 @@ subsection Model settings
   set Zero velocity boundary indicators       = inner 
   set Enable Impacts                          = true
   subsection Impacts
-    set Data file = $ASPECT_SOURCE_DIR/data/impacts/impact_2D_test.dat
+    set Data file = $ASPECT_SOURCE_DIR/data/impacts/impact_test
     # The two point is given in the format: lat,lon
     set Point one = 0,0
-    set Point two = 45,90
+    set Point two = 0,90
   end
 end
 

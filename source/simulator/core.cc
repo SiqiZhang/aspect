@@ -2041,7 +2041,7 @@ namespace aspect
               ExcMessage ("This boundary model is only implemented if the geometry is "
                                 "in fact a spherical shell."));
       impacts.Initialize(parameters.Impacts_datafile,
-                         parameters.start_time,
+                         time,
                          spherical_shell_geometry->R1,
                          parameters.surface_point_one,
                          parameters.surface_point_two,
