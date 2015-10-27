@@ -254,6 +254,7 @@ namespace aspect
     std::string liquidus_filename;
     std::string model_name;
     double Lh;
+    double extraction_ratio;
         
     double get_viscosity_arrhenius (double temperature, double pressure, double strain_rate_II, double A, double E, double V, double n) const;
 

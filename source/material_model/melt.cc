@@ -241,7 +241,7 @@ namespace aspect
       }
       else if(model_name=="linear")
         if(i_composition_depletion>0 && i_composition_depletion<(int)compositional_fields.size())
-          new_compositional_fields[i_composition_depletion]+=melt_fraction(temperature,pressure,compositional_fields,position);
+          new_compositional_fields[i_composition_depletion]+=melt_fraction(temperature,pressure,compositional_fields,position)*extraction_ratio;
 
       
 /*
@@ -272,6 +272,7 @@ namespace aspect
                    const Point<dim> &position,
                    const unsigned int compositional_variable) const
     {
+      // This function is not use by Steinberger model at the moment, so the stuff here taks no effects.
       double delta_C=0.;
       /*
       Melt_Katz::Melt_Katz melt_calculation(melting_parameters);
@@ -295,7 +296,7 @@ namespace aspect
       */
       if(model_name=="linear")
         if((int)compositional_variable==i_composition_depletion)
-          delta_C = melt_fraction(temperature,pressure,compositional_fields,position);
+          delta_C = melt_fraction(temperature,pressure,compositional_fields,position)*extraction_ratio;
       return delta_C;
     }
 
@@ -689,6 +690,11 @@ namespace aspect
             prm.declare_entry ("Latent heat","0",
                                Patterns::Double (),
                                "The latent hear of melt Units: J/kg");
+            prm.declare_entry ("Extraction ratio","1",
+                               Patterns::Double (0,1),
+                               "The ratio for melt extraction. Value range 0~1, 0 -- means no extraction;"
+                               "1 -- means fully extraction. Choose value smaller value than 1 is suggested, "
+                               "mainly due to stablization purposes.");
           }
           prm.leave_subsection();
 
@@ -882,7 +888,8 @@ namespace aspect
             liquidus_filename=prm.get ("Liquidus filename");
             aspect::Utilities::replace_path(liquidus_filename);
 
-            Lh=prm.get_double ("Latent heat");
+            Lh = prm.get_double ("Latent heat");
+            extraction_ratio = prm.get_double ("Extraction ratio");
           }
           prm.leave_subsection();
 
