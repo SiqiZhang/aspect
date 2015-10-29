@@ -577,8 +577,8 @@ namespace aspect
     Dynamic_core<dim>::get_dT(double &X, double &T, double &R,double a)
     {
         double p,Ta,Ts;
-        T=core_data.Ti+(core_data.Q+core_data.Qr)*a/core_data.Qs*core_data.dt;
-        R=get_R_loop(T,(1-a)*(core_data.Q+core_data.Qr)*core_data.dt);
+        T=core_data.Ti+(core_data.Q-core_data.Qr)*a/core_data.Qs*core_data.dt;
+        R=get_R_loop(T,(1-a)*(core_data.Q-core_data.Qr)*core_data.dt);
         X=get_X(R);
         p=get_Pressure(R);
         Ta=get_T(T,R);
@@ -883,7 +883,7 @@ namespace aspect
     {
         double S=R/(2.*sqrt(M_PI));
         for(unsigned i=1;i<=n;i++)
-            S+=B/sqrt(M_PI)*exp(-pow(i,2)/4.)/(i*sinh(i*R/B));
+            S+=B/sqrt(M_PI)*exp(-pow(i,2)/4.)/i*sinh(i*R/B);
         return S;
     }
     template <int dim>
