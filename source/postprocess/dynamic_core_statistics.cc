@@ -72,12 +72,12 @@ namespace aspect
       /*
          double T_CMB=SimulatorAccess<dim>::Get_T_CMB(),
          R_i=SimulatorAccess<dim>::Get_R_i();*/
-      AssertThrow (dynamic_cast<const BoundaryTemperature::Dynamic_core<dim>*> (&(SimulatorAccess<dim>::get_boundary_temperature()))
+      const BoundaryTemperature::Dynamic_core<dim>* dynamic_core =
+        dynamic_cast<const BoundaryTemperature::Dynamic_core<dim>*> (&(SimulatorAccess<dim>::get_boundary_temperature()));
+      AssertThrow (dynamic_core != NULL
           !=0,
           ExcMessage ("Dynamic core statistics has to be working with dynamic core boundary conditions."));
-      const struct BoundaryTemperature::_Core_Data core_data
-        =(dynamic_cast<const BoundaryTemperature::Dynamic_core<dim>&> 
-            (SimulatorAccess<dim>::get_boundary_temperature())).get_core_data();
+      const struct BoundaryTemperature::_Core_Data core_data = dynamic_core->get_core_data();
       // Calculate the heat flux at the top and bottom boundaries
       // copied from heat_flux_statistics.cc
       // create a quadrature formula based on the temperature element alone.
@@ -251,59 +251,100 @@ namespace aspect
           statistics.set_precision (name2, 2);
           statistics.set_scientific (name2, false);
 
-          const std::string name8 = "Light element concentration (%)";
+          const std::string name3 = "Light element concentration (%)";
           //statistics.add_value (name8, SimulatorAccess<dim>::postprocess_dynamic_core.Xi*100);
-          statistics.add_value (name8, core_data.Xi*100);
-          statistics.set_precision (name8, 4);
-          statistics.set_scientific (name8, false);
+          statistics.add_value (name3, core_data.Xi*100);
+          statistics.set_precision (name3, 4);
+          statistics.set_scientific (name3, false);
 
-          const std::string name3 = "Es (W/K)";
-          //statistics.add_value (name3, SimulatorAccess<dim>::postprocess_dynamic_core.Es*1e-6);
-          statistics.add_value (name3, core_data.Es*core_data.dT_dt);
-          // also make sure that the other columns filled by the this object
-          // all show up with sufficient accuracy and in scientific notation
-           statistics.set_precision (name3, 3);
-           statistics.set_scientific (name3, true);
+          if(excess_entropy_only)
+          {
+            const std::string name4 = "Excess entropy (W/K)";
+            const double delta_E = core_data.Es*core_data.dT_dt
+                                 + core_data.Er
+                                 + core_data.Eh*core_data.dR_dt
+                                 + core_data.El*core_data.dR_dt
+                                 + core_data.Eg*core_data.dR_dt
+                                 - core_data.Ek;
+            statistics.add_value (name4, delta_E);
+            statistics.set_precision (name4, 3);
+            statistics.set_scientific (name4, true);
+          }
+          else
+          {
+            const std::string name5 = "Es (W/K)";
+            statistics.add_value (name5, core_data.Es*core_data.dT_dt);
+            statistics.set_precision (name5, 3);
+            statistics.set_scientific (name5, true);
 
-           const std::string name4 = "Er (W/K)";
-           //statistics.add_value (name4, SimulatorAccess<dim>::postprocess_dynamic_core.Er*1e-6);
-           statistics.add_value (name4, core_data.Er);
-           // also make sure that the other columns filled by the this object
-           // all show up with sufficient accuracy and in scientific notation
-           statistics.set_precision (name4, 3);
-           statistics.set_scientific (name4, true);
+            const std::string name6 = "Er (W/K)";
+            statistics.add_value (name6, core_data.Er);
+            statistics.set_precision (name6, 3);
+            statistics.set_scientific (name6, true);
 
-           const std::string name5 = "El (W/K)";
-           //statistics.add_value (name5, SimulatorAccess<dim>::postprocess_dynamic_core.El*1e-6);
-           statistics.add_value (name5, core_data.El*core_data.dR_dt);
-           // also make sure that the other columns filled by the this object
-           // all show up with sufficient accuracy and in scientific notation
-           statistics.set_precision (name5, 3);
-           statistics.set_scientific (name5, true);
+            const std::string name7 = "Eh (W/K)";
+            statistics.add_value (name7, core_data.Eh*core_data.dR_dt);
+            statistics.set_precision (name7, 3);
+            statistics.set_scientific (name7, true);
 
-           const std::string name6 = "Eg (W/K)";
-           //statistics.add_value (name6, SimulatorAccess<dim>::postprocess_dynamic_core.Eg*1e-6);
-           statistics.add_value (name6, core_data.Eg*core_data.dR_dt);
-           // also make sure that the other columns filled by the this object
-           // all show up with sufficient accuracy and in scientific notation
-           statistics.set_precision (name6, 3);
-           statistics.set_scientific (name6, true);
+            const std::string name8 = "El (W/K)";
+            statistics.add_value (name8, core_data.El*core_data.dR_dt);
+            statistics.set_precision (name8, 3);
+            statistics.set_scientific (name8, true);
 
-           const std::string name7 = "Ek (W/K)";
-           //statistics.add_value (name7, SimulatorAccess<dim>::postprocess_dynamic_core.Ek*1e-6);
-           statistics.add_value (name7, core_data.Ek);
-           // also make sure that the other columns filled by the this object
-           // all show up with sufficient accuracy and in scientific notation
-           statistics.set_precision (name7, 3);
-           statistics.set_scientific (name7, true);
+            const std::string name9 = "Eg (W/K)";
+            statistics.add_value (name9, core_data.Eg*core_data.dR_dt);
+            statistics.set_precision (name9, 3);
+            statistics.set_scientific (name9, true);
 
-           const std::string name9 = "Other energy source (W)";
-           statistics.add_value (name9, core_data.Q_OES);
-           statistics.set_precision (name9, 3);
-           statistics.set_scientific (name9, true);
+            const std::string name10 = "Ek (W/K)";
+            statistics.add_value (name10, core_data.Ek);
+            statistics.set_precision (name10, 3);
+            statistics.set_scientific (name10, true);
+          }
+
+          if(dynamic_core->is_OES_used())
+          {
+            const std::string name11 = "Other energy source (W)";
+            statistics.add_value (name11, core_data.Q_OES);
+            statistics.set_precision (name11, 3);
+            statistics.set_scientific (name11, true);
+          }
 
       return std::pair<std::string, std::string> ("Core data (Q_CMB/Q_surface)",
                                                   screen_text.str());
+    }
+
+    template <int dim>
+    void
+    DynamicCoreStatistics<dim>::declare_parameters (ParameterHandler &prm)
+    {
+      prm.enter_subsection("Postprocess");
+      {
+        prm.enter_subsection("Dynamic core statistics");
+        {
+          prm.declare_entry("Excess entropy only","false",
+                            Patterns::Bool(),
+                            "Output the excess entropy only instead the each entropy terms.");
+        }
+        prm.leave_subsection();
+      }
+      prm.leave_subsection();
+    }
+
+    template <int dim>
+    void
+    DynamicCoreStatistics<dim>::parse_parameters (ParameterHandler &prm)
+    {
+      prm.enter_subsection("Postprocess");
+      {
+        prm.enter_subsection("Dynamic core statistics");
+        {
+          excess_entropy_only = prm.get_bool("Excess entropy only");
+        }
+        prm.leave_subsection();
+      }
+      prm.leave_subsection();
     }
   }
 }

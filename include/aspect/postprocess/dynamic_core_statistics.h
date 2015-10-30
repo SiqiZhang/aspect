@@ -46,6 +46,20 @@ namespace aspect
          **/
         DynamicCoreStatistics();
 
+        /**
+         * Declare the parameters this class takes through input files.
+         */
+        static
+        void
+        declare_parameters (ParameterHandler &prm);
+
+        /**
+         * Read the parameters this class declares from the parameter file.
+         */
+        virtual
+        void
+        parse_parameters (ParameterHandler &prm);
+
         virtual
         std::pair<std::string,std::string>
         execute (TableHandler &statistics);
@@ -56,6 +70,7 @@ namespace aspect
       private:
         double CMB_heat_flux;
         bool   initialized;
+        bool   excess_entropy_only;
     };
   }
 }

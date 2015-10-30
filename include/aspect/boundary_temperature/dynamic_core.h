@@ -45,9 +45,9 @@ namespace aspect
 
         /**
          * Entropy for specific heat, radioactive heating, gravitational contribution, 
-         * adiabatic contribution, and latent heat.
+         * adiabatic contribution, latent heat, and heat solution.
          */
-        double Es,Er,Eg,Ek,El;
+        double Es,Er,Eg,Ek,El,Eh;
 
         /**
          * Parameters for core evolution
@@ -61,7 +61,7 @@ namespace aspect
          * Core-mantle boundary heat flux (Q) and core radioactive heating rate (H)
          */
         double Q,H;
-        
+
         /**
          * Time step for core energy balance solver
          */
@@ -167,6 +167,11 @@ namespace aspect
          * Set core data
          */
         void set_core_data(const struct _Core_Data &core_data);
+
+        /**
+         * Check if other energy source in core is in use
+         */
+        bool is_OES_used() const;
 
       private:
 
@@ -296,6 +301,11 @@ namespace aspect
          * Latent heat of fusion
          */
         double Lh;
+
+        /**
+         * Heat of reaction
+         */
+        double Rh;
         
         /**
          * Compositional expansion coefficient
@@ -502,6 +512,11 @@ namespace aspect
          * radius)
          */
         void get_latent_heating(double Tc, double r, double &El, double &Ql);
+
+        /**
+         * Calculate entropy of heat of solution Eh
+         */
+        void get_heat_solution(double Tc, double r, double X, double &Eh);
         
         /**
          * return radio heating rate at certain time

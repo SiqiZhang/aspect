@@ -140,6 +140,9 @@ namespace aspect
           prm.declare_entry ("Lh", "750e3",
                              Patterns::Double (0),
                              "The latent heat of core freeze. Unit: J/kg");
+          prm.declare_entry ("Rh","-27.7e6",
+                             Patterns::Double (),
+                             "The heat of reaction. Unit: J/kg");
           prm.declare_entry ("Beta_c", "1.1",
                              Patterns::Double (0),
                              "Compositional expansion coefficient."
@@ -241,6 +244,7 @@ namespace aspect
           Beta_c            = prm.get_double ("Beta_c");
           k_c               = prm.get_double ("k_c");
           Delta             = prm.get_double ("Delta");
+          Rh                = prm.get_double ("Rh");
           
           prm.enter_subsection("Geotherm parameters");
           {
@@ -683,6 +687,7 @@ namespace aspect
         get_gravity_heating(core_data.Ti,core_data.Ri,core_data.Xi,core_data.Qg,core_data.Eg);
         get_adiabatic_heating(core_data.Ti,core_data.Ek,core_data.Qk);
         get_latent_heating(core_data.Ti,core_data.Ri,core_data.El,core_data.Ql);
+        get_heat_solution(core_data.Ti,core_data.Ri,core_data.Xi,core_data.Eh);
         /*
         std::cout<<"  Q="<<core_data.Q
                  <<",Qs="<<core_data.Qs
@@ -859,14 +864,17 @@ namespace aspect
         }
         inner_temperature = core_data.Ti - dTa;
         update_core_data();
-        const ConditionalOStream &pcout=this->get_pcout();
-        pcout<<std::setiosflags(std::ios::left);
-        pcout<<"   Dynamic core data updated."<<std::endl;
-        pcout<<"     "<<std::setw(15)<<"Tc(K)"<<std::setw(15)<<"Ri(km)"<<std::setw(15)<<"Xi"
-            <<std::setw(15)<<"dT/dt(K/year)"<<std::setw(15)<<"dR/dt(km/year)"<<std::setw(15)<<"dX/dt(1/year)"<<std::endl;
-        pcout<<"     "<<std::setprecision(6)<<std::setw(15)<<inner_temperature<<std::setw(15)<<core_data.Ri/1.e3<<std::setw(15)<<core_data.Xi
-            <<std::setw(15)<<core_data.dT_dt*year_in_seconds<<std::setw(15)<<core_data.dR_dt/1.e3*year_in_seconds
-            <<std::setw(15)<<core_data.dX_dt*year_in_seconds<<std::endl;
+        if(core_data.Q!=0.)
+        {
+          const ConditionalOStream &pcout=this->get_pcout();
+          pcout<<std::setiosflags(std::ios::left);
+          pcout<<"   Dynamic core data updated."<<std::endl;
+          pcout<<"     "<<std::setw(15)<<"Tc(K)"<<std::setw(15)<<"Ri(km)"<<std::setw(15)<<"Xi"
+               <<std::setw(15)<<"dT/dt(K/year)"<<std::setw(15)<<"dR/dt(km/year)"<<std::setw(15)<<"dX/dt(1/year)"<<std::endl;
+          pcout<<"     "<<std::setprecision(6)<<std::setw(15)<<inner_temperature<<std::setw(15)<<core_data.Ri/1.e3<<std::setw(15)<<core_data.Xi
+               <<std::setw(15)<<core_data.dT_dt*year_in_seconds<<std::setw(15)<<core_data.dR_dt/1.e3*year_in_seconds
+               <<std::setw(15)<<core_data.dX_dt*year_in_seconds<<std::endl;
+        }
     }
     template <int dim>
     double
@@ -996,6 +1004,28 @@ namespace aspect
         Er=(Mc/Tc-It)*core_data.H;
 
     }
+
+    template <int dim>
+    void
+    Dynamic_core<dim>::
+    get_heat_solution(double Tc, double r, double X,double &Eh)
+    {
+      double B,It;
+      if(D>L)
+      {
+        B=sqrt(1/(1/pow(L,2)-1/pow(D,2)));
+        It=4*M_PI*Rho_cen/get_T(Tc,0)*(-pow(B,2)*Rc/2*exp(-pow(Rc/B,2))+pow(B,3)/sqrt(M_PI)/4*erf(Rc/B));
+        It-=4*M_PI*Rho_cen/get_T(Tc,0)*(-pow(B,2)*r/2*exp(-pow(r/B,2))+pow(B,3)/sqrt(M_PI)/4*erf(r/B));
+      }
+      else
+      {
+        B=sqrt(1/(pow(D,-2)-pow(L,-2)));
+        It=4*M_PI*Rho_cen/get_T(Tc,0)*(pow(B,2)*Rc/2*exp(pow(Rc/B,2))-pow(B,2)*fun_Sn(B,Rc,100)/2);
+        It-=4*M_PI*Rho_cen/get_T(Tc,0)*(pow(B,2)*r/2*exp(pow(r/B,2))-pow(B,2)*fun_Sn(B,r,100)/2);
+      }
+      double Cc=4*M_PI*pow(r,2)*get_Rho(r)*X/(Mc-get_Mass(r));
+      Eh=Rh*(It-(Mc-get_Mass(r))/get_T(Tc,r))*Cc;
+    }
     
     template <int dim>
     void
@@ -1044,6 +1074,17 @@ namespace aspect
       for(unsigned i=0;i<n_radioheating_elements;i++)
         Ht+=heating_rate[i]*initial_concentration[i]*1e-6*pow(0.5,time/half_life[i]/year_in_seconds/1e9);
       return Ht;
+    }
+
+    template <int dim>
+    bool
+    Dynamic_core<dim>::
+    is_OES_used() const
+    {
+      if(data_OES.size()>0)
+        return true;
+      else
+        return false;
     }
 
   }
