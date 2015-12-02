@@ -1470,6 +1470,11 @@ namespace aspect
        */
       void revise_composition_melt();
 
+      /**
+       * Change velocity field due to melt extraction
+       */
+      void revise_velocity_melt();
+
       friend class boost::serialization::access;
       friend class SimulatorAccess<dim>;
       friend class FreeSurfaceHandler;  //FreeSurfaceHandler needs access to the internals of the Simulator

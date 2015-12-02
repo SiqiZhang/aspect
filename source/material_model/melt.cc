@@ -690,7 +690,7 @@ namespace aspect
             prm.declare_entry ("Latent heat","0",
                                Patterns::Double (),
                                "The latent hear of melt Units: J/kg");
-            prm.declare_entry ("Extraction ratio","1",
+            prm.declare_entry ("Extraction ratio","0.5",
                                Patterns::Double (0,1),
                                "The ratio for melt extraction. Value range 0~1, 0 -- means no extraction;"
                                "1 -- means fully extraction. Choose value smaller value than 1 is suggested, "

@@ -1691,6 +1691,8 @@ namespace aspect
           build_stokes_preconditioner();
           solve_stokes();
 
+          //revise_velocity_melt();
+
           break;
         }
         case NonlinearSolver::Stokes_only:
@@ -2105,6 +2107,8 @@ namespace aspect
           free_surface->detach_manifolds();
 
         postprocess ();
+
+        revise_velocity_melt();
 
         // Dealing with compositon melt
         if(dynamic_cast<const MaterialModel::Melt<dim>*>(material_model.get())!=0

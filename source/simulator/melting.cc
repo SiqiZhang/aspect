@@ -1,5 +1,6 @@
 #include <aspect/melting.h>
 #include <aspect/simulator.h>
+#include <aspect/postprocess/melt_statistics.h>
 #include <deal.II/base/point.h>
 #include <deal.II/fe/fe_values.h>
 #include <string>
@@ -243,14 +244,75 @@ namespace aspect
      //constraints.distribute(melt_solution);
      for(unsigned j=0;j<parameters.n_compositional_fields;j++)
        solution.block(3+j) = melt_solution.block(3+j);
-  }     
+  }
+
+  template<int dim>
+  void
+  Simulator<dim>::revise_velocity_melt()
+  {
+    Postprocess::MeltStatistics<dim> *melt_statistics 
+      = this->postprocess_manager.template find_postprocessor<Postprocess::MeltStatistics<dim> >();
+    if(melt_statistics!=NULL)
+    {
+      LinearAlgebra::BlockVector melt_solution;
+      const unsigned int base_element = 0;
+      melt_solution.reinit(system_rhs,false);
+      const std::vector<Point<dim> > support_points
+        = finite_element.base_element(base_element).get_unit_support_points();
+      Assert (support_points.size() != 0,
+          ExcInternalError());
+      FEValues<dim> fe_values (mapping, finite_element,
+                               support_points,
+                               update_values |
+                               update_quadrature_points |
+                               update_JxW_values);
+      std::vector<types::global_dof_index> local_dof_indices (finite_element.dofs_per_cell);
+      for (typename DoFHandler<dim>::active_cell_iterator cell = dof_handler.begin_active();
+          cell != dof_handler.end(); ++cell)
+        if (cell->is_locally_owned())
+        {
+          fe_values.reinit (cell);
+          cell->get_dof_indices (local_dof_indices);
+          for (unsigned int i=0; i<finite_element.base_element(base_element).dofs_per_cell; ++i)
+          {
+            unsigned int system_local_dof[dim];
+            Tensor<1,dim> velocity;
+            for(unsigned j=0;j<dim;j++)
+            {
+              system_local_dof[j] = finite_element.component_to_system_index(j,i);
+              velocity[j]=solution[local_dof_indices[system_local_dof[j]]];
+            }
+            double dv_z=melt_statistics->get_compression(fe_values.quadrature_point(i))/time_step;
+            double r = std::sqrt(fe_values.quadrature_point(i).norm_square());
+            for(unsigned j=0;j<dim;j++)
+            {
+              melt_solution(local_dof_indices[system_local_dof[j]]) = velocity[j] - fe_values.quadrature_point(i)[j]/r*dv_z;
+            }
+          }
+        }
+      melt_solution.compress(VectorOperation::insert);
+      // we should not have written at all into any of the blocks with
+      // the exception of the current compostion block
+      for (unsigned int b=0; b<melt_solution.n_blocks(); ++b)
+        if (b > 0)
+          Assert (melt_solution.block(b).l2_norm() == 0,
+              ExcInternalError());
+      //constraints.distribute(melt_solution);
+      solution.block(0) = melt_solution.block(0);
+    }
+  }
 }
  // explicit instantiation of the functions we implement in this file
  namespace aspect
  {
- #define INSTANTIATE(dim) \
+   #define INSTANTIATE1(dim) \
    template void Simulator<dim>::revise_composition_melt();
+   
+   ASPECT_INSTANTIATE(INSTANTIATE1)
 
-   ASPECT_INSTANTIATE(INSTANTIATE)
+   #define INSTANTIATE2(dim) \
+   template void Simulator<dim>::revise_velocity_melt();
+   
+   ASPECT_INSTANTIATE(INSTANTIATE2)
  }
 

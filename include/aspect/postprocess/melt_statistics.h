@@ -23,6 +23,8 @@
 #ifndef __aspect__postprocess__melt_statistics_h
 #define __aspect__postprocess__melt_statistics_h
 
+#include <vector>
+
 #include <aspect/postprocess/interface.h>
 #include <aspect/simulator_access.h>
 
@@ -46,6 +48,73 @@ namespace aspect
         virtual
         std::pair<std::string,std::string>
         execute (TableHandler &statistics);
+
+        static Tensor<1,dim> transfer_coord(const Point<dim> &p);
+
+        /** 
+         * Calculate matrix compression at given point
+         **/
+        double get_compression(const Point<dim> &p) const;
+        
+        /**
+         * Additional grid to store melt fraction and matrix compression
+         **/
+        //TODO: Only works in 2D at the moment
+        class MeltGrid
+        {
+          public:
+            MeltGrid();
+
+            void set_grid(double R0, double R1, unsigned nr, unsigned nh);
+            
+            void add_melt(double h0, double h1, double r0, double r1, double f);
+
+            bool is_grid_set() const;
+
+            void calculate_compression();
+
+            double get_compression(const Point<dim> &p) const;
+
+            void output_vtk(unsigned int time_step_num) const;
+            
+            struct MeltCell
+            {
+              double r0;
+              double r1;
+              double h0;
+              double h1;
+            };
+          private:
+            double               R0;
+            double               R1;
+            double               dr;
+            double               dh;
+            unsigned             nr;
+            unsigned             nh;
+            std::vector<double>  melt_fraction;
+            std::vector<double>  matrix_compression;
+            bool                 grid_set;
+
+            struct MeltCell get_overlapping_cell(struct MeltCell a, struct MeltCell b) const;
+
+            double modify_radian(double ref_angle, double angle) const;
+
+            double get_volume(struct MeltCell a) const;
+
+            unsigned cell_index(unsigned i_h, unsigned i_r) const
+            {
+              return i_h*nr+i_r;
+            }
+
+            unsigned point_index(unsigned i_h, unsigned i_r) const
+            {
+              return i_h*(nr+1)+i_r;
+            }
+
+        };
+
+      private:
+        MeltGrid melt_grid;
     };
   }
 }

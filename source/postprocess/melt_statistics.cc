@@ -10,6 +10,8 @@
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/archive/text_iarchive.hpp>
 
+#include <string>
+
 namespace aspect
 {
   namespace Postprocess
@@ -18,6 +20,9 @@ namespace aspect
     std::pair<std::string,std::string>
     MeltStatistics<dim>::execute (TableHandler &statistics)
     {
+      //if(!melt_grid.is_grid_set())
+        melt_grid.set_grid(5371.e3,6371.e3,50,360);
+
       // create a quadrature formula based on the temperature element alone.
       // be defensive about determining that what we think is the temperature
       // element is it in fact
@@ -102,7 +107,42 @@ namespace aspect
             if(melting_fractions[q]>0.01)
               local_melting_integral += melting_fractions[q]*fe_values.JxW(q);
           }
+
+          // Melting treatment
+          // TODO: this only works in 2D
+          if(dim==2)
+          {
+            double cell_volume=0.;
+            double cell_melt=0.;
+            for (unsigned int q=0; q<n_q_points; ++q)
+            {
+              cell_volume += fe_values.JxW(q);
+              //cell_melt   += 0.01*fe_values.JxW(q);
+              cell_melt   += melting_fractions[q]*fe_values.JxW(q);
+            }
+            Tensor<1,dim> p0 = transfer_coord(cell->vertex(0));
+            Tensor<1,dim> p1 = transfer_coord(cell->vertex(1));
+            Tensor<1,dim> p2 = transfer_coord(cell->vertex(2));
+            struct MeltGrid::MeltCell cell0;
+            cell0.r0=std::min(p0[1],std::min(p1[1],p2[1]));
+            cell0.r1=std::max(p0[1],std::max(p1[1],p2[1]));
+            cell0.h0=std::min(p0[0],std::min(p1[0],p2[0]));
+            cell0.h1=std::max(p0[0],std::max(p1[0],p2[0]));
+            if((cell0.h1-cell0.h0)>M_PI)
+            {
+              std::swap(cell0.h0,cell0.h1);
+              cell0.h1 += 2.*M_PI;
+            }
+            //std::cout<<"0 r="<<p0[1]<<", theta="<<p0[0]<<std::endl;
+            //std::cout<<"1 r="<<p1[1]<<", theta="<<p1[0]<<std::endl;
+            //std::cout<<"2 r="<<p2[1]<<", theta="<<p2[0]<<std::endl;
+            melt_grid.add_melt(cell0.h0,cell0.h1,cell0.r0,cell0.r1,cell_melt/cell_volume);
+          }
+
         }
+      melt_grid.calculate_compression();
+      unsigned int time_step_num = this->get_timestep_number ();
+      melt_grid.output_vtk(time_step_num);
       double global_melting_integral
         = Utilities::MPI::sum (local_melting_integral, this->get_mpi_communicator());
       global_melting_integral*=1.0e-9/this->get_timestep()*year_in_seconds;// Change melt production to km^3/year
@@ -131,6 +171,226 @@ namespace aspect
           output.str());
 
     }
+
+    template <int dim>
+    Tensor<1,dim>
+    MeltStatistics<dim>::transfer_coord(const Point<dim> &p)
+    {
+      Tensor<1,dim> scoord;
+      if(dim==2)
+      {
+        scoord[0] = std::atan2(p[0],p[1]);      //Theta
+        if(scoord[0]<0.)
+          scoord[0] += 2*M_PI;
+        scoord[1] = std::sqrt(p.norm_square()); //R
+      }
+      else
+      {
+        //Not implimented
+      }
+      return scoord;
+    }
+
+    template<int dim>
+    double
+    MeltStatistics<dim>::get_compression(const Point<dim> &p) const
+    {
+      return melt_grid.get_compression(p);
+    }
+
+
+    template <int dim>
+    MeltStatistics<dim>::MeltGrid::MeltGrid()
+    {
+      grid_set = false;
+    }
+
+    template <int dim>
+    bool
+    MeltStatistics<dim>::MeltGrid::is_grid_set() const
+    {
+      return grid_set;
+    }
+
+
+    template <int dim>
+    void
+    MeltStatistics<dim>::MeltGrid::set_grid(double R0, double R1, unsigned nr, unsigned nh)
+    {
+      this->R0=R0;
+      this->R1=R1;
+      this->nr=nr;
+      this->nh=nh;
+
+      dr=(R1-R0)/nr;
+      dh=2.*M_PI/nh;
+
+      melt_fraction.assign(nr*nh,0.);
+      matrix_compression.assign((nr+1)*(nh+1),0.);
+
+      grid_set = true;
+
+    }
+
+    template <int dim>
+    void
+    MeltStatistics<dim>::MeltGrid::add_melt(double h0, double h1, double r0, double r1, double f)
+    {
+      int ir_start = std::max<int>(0,std::floor((r0-R0)/dr));
+      int ir_end   = std::min<int>(nr,std::ceil((r1-R0)/dr));
+      if(h1<h0) h1 += 2.*M_PI;
+      int ih_start = std::floor(h0/dh);
+      int ih_end   = std::ceil(h1/dh);
+      
+      struct MeltCell cell_a;
+      cell_a.h0=h0;
+      cell_a.h1=h1;
+      cell_a.r0=r0;
+      cell_a.r1=r1;
+      for(int i=ih_start;i<ih_end;i++)
+      {
+        struct MeltCell cell_b;
+        cell_b.h0=dh*(i%nh);
+        cell_b.h1=dh*(i%nh+1);
+        for(int j=ir_start;j<ir_end;j++)
+        {
+          cell_b.r0=R0+dr*j;
+          cell_b.r1=R0+dr*(j+1);
+          /*
+          std::cout<<"Adding cell["<<cell_a.h0<<"-"<<cell_a.h1<<"]["<<cell_a.r0<<"-"<<cell_a.r1<<
+                     "] ["<<ih_start<<"-"<<ih_end<<"]["<<ir_start<<"-"<<ir_end<<"] "<<
+                     "to cell [" <<cell_b.h0<<","<<cell_b.h1<<"]-["<<cell_b.r0<<","<<cell_b.r1<<
+                     "] ["<<i<<"]["<<j<<"]" <<std::endl;
+                     */
+          struct MeltCell cell_c=get_overlapping_cell(cell_a,cell_b);
+          melt_fraction[cell_index(i,j)]+=f*get_volume(cell_c)/get_volume(cell_b);
+          //std::cout<<"Volume overlapping "<<get_volume(cell_c)<<", cell volume "<<get_volume(cell_b)<<std::endl;
+        }
+      }
+    }
+
+    template <int dim>
+    struct MeltStatistics<dim>::MeltGrid::MeltCell
+    MeltStatistics<dim>::MeltGrid::get_overlapping_cell(struct MeltCell a, struct MeltCell b) const
+    {
+      //a.h1 = modify_radian(a.h0,a.h1);
+      //b.h0 = modify_radian(a.h0,b.h0);
+      //b.h1 = modify_radian(a.h0,b.h1);
+      struct MeltCell c;
+      c.r0=std::max(a.r0,b.r0);
+      c.r1=std::max(std::min(a.r1,b.r1),c.r0);
+      c.h0=std::max(a.h0,b.h0);
+      c.h1=std::max(std::min(a.h1,b.h1),c.h0);
+      return c;
+    }
+
+    template <int dim>
+    double
+    MeltStatistics<dim>::MeltGrid::get_volume(struct MeltCell a) const
+    {
+      return .5*(a.h1-a.h0)*(a.r1*a.r1-a.r0*a.r0);
+    }
+
+    template <int dim>
+    double
+    MeltStatistics<dim>::MeltGrid::modify_radian(double ref_angle, double angle) const
+    {
+      double diff_angle=angle-ref_angle;
+      if(diff_angle<0.)
+        return angle+2.*M_PI;
+      else if(diff_angle>=2.*M_PI)
+        return angle-2.*M_PI;
+      return angle;
+    }
+
+    template<int dim>
+    void
+    MeltStatistics<dim>::MeltGrid::calculate_compression() 
+    {
+      //matrix_compression.assign((nr+1)*(nh+1),0.);
+      for(int i=0;i<=(int)nh;i++)
+        for(int j=1;j<=(int)nr;j++)
+        {
+          double fraction=.5*(melt_fraction[cell_index(i%nh,(j-1))]+melt_fraction[cell_index(((i-1)%(int)nh+nh)%nh,(j-1))]);
+          double dr0 = matrix_compression[point_index(i,j-1)];
+          double r0  = (R0+dr*(j-1));
+          double r1  = (R0+dr*j);
+          double dr1 = r1 - sqrt((r0-dr0)*(r0-dr0)+(1.-fraction)*(r1*r1-r0*r0));
+          matrix_compression[point_index(i,j)] = dr1;
+          //if(i==0 || i==(int)nh)std::cout<<j<<" cell["<<i%nh<<","<<(j-1)<<"] ("<<cell_index(i%nh,(j-1)) <<")"
+          //  <<" & ["<<((i-1)%(int)nh+nh)%nh<<","<<(j-1)<<"] ("<<cell_index(((i-1)%(int)nh+nh)%nh,(j-1)) <<")"<<std::endl;
+        }
+    }
+
+    template<int dim>
+    double
+    MeltStatistics<dim>::MeltGrid::get_compression(const Point<dim> &p) const
+    {
+      Tensor<1,dim> p0 = MeltStatistics<dim>::transfer_coord(p);
+      if(p0[1]>R0 && p0[1]<R1)
+      {
+        // Linear interpolation
+        unsigned i0=p0[0]/dh;
+        unsigned j0=(p0[1]-R0)/dr;
+        double w1=fmod(p0[0],dh)/dh;
+        double w2=fmod(p0[1],dr)/dr;
+        double compression =
+            matrix_compression[point_index(i0,j0)] * (1.-w1)*(1.-w2)
+          + matrix_compression[point_index((i0+1)%nh,j0)] * w1*(1.-w2)
+          + matrix_compression[point_index(i0,j0+1)] * (1.-w1)*w2
+          + matrix_compression[point_index((i0+1)%nh,j0+1)] * w1*w2;
+        return compression;
+      }
+      else
+        return 0.;
+    }
+
+    template <int dim>
+    void
+    MeltStatistics<dim>::MeltGrid::output_vtk(unsigned int time_step_num = 0) const
+    {
+      //unsigned int time_step_num = this->get_timestep_number ();
+      std::string str_time_step = static_cast<std::ostringstream*>( &(std::ostringstream() << time_step_num) )->str();
+      std::string file_name = std::string("melt_gird.") + str_time_step + ".vtk";
+      FILE *fp=fopen(file_name.c_str(),"w");
+      fprintf(fp,"# vtk DataFile Version 2.0\n");
+      fprintf(fp,"Melt grid\n");
+      fprintf(fp,"ASCII\n");
+      fprintf(fp,"DATASET STRUCTURED_GRID\n");
+      fprintf(fp,"DIMENSIONS %u %u %u\n",nr+1,nh+1,1);
+      //fprintf(fp,"ORIGIN %f %f %f\n",0.,0.,0.);
+      //fprintf(fp,"SPACING %e %e %e\n",dr,dh,0.);
+      fprintf(fp,"POINTS %u float\n",(nr+1)*(nh+1));
+      for(unsigned i=0;i<=nh;i++)
+        for(unsigned j=0;j<=nr;j++)
+          fprintf(fp,"%e %e %e\n",(R0+dr*j)*sin(dh*i),(R0+dr*j)*cos(dh*i),0.);
+      fprintf(fp,"CELL_DATA %u\n",nh*nr);
+      fprintf(fp,"SCALARS melt_fraction float 1\n");
+      fprintf(fp,"LOOKUP_TABLE default\n");
+      for(unsigned i=0;i<melt_fraction.size();i++)
+        fprintf(fp,"%e\n",melt_fraction[i]);
+      fprintf(fp,"SCALARS matrix_compression float 1\n");
+      fprintf(fp,"LOOKUP_TABLE default\n");
+      for(unsigned i=0;i<nh;i++)
+          for(unsigned j=0;j<nr;j++)
+          {
+            Point<dim> p;
+            p[0]=(R0+dr*(j+.5))*sin(dh*(i+.5));
+            p[1]=(R0+dr*(j+.5))*cos(dh*(i+.5));
+            fprintf(fp,"%e\n",get_compression(p));
+          }
+
+      fprintf(fp,"POINT_DATA %u\n",(nh+1)*(nr+1));
+      fprintf(fp,"SCALARS matrix_compression float 1\n");
+      fprintf(fp,"LOOKUP_TABLE default\n");
+      for(unsigned i=0;i<matrix_compression.size();i++)
+        fprintf(fp,"%e\n",matrix_compression[i]);
+
+      fclose(fp);
+    }
+
+
+
   }
 }
 // explicit instantiations
