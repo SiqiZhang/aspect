@@ -151,15 +151,6 @@ namespace aspect
 
         }
 
-      if(melt_grid.is_grid_set())
-      {
-        melt_grid.calculate_compression();
-        if(melt_grid_output)
-        {
-          unsigned int time_step_num = this->get_timestep_number ();
-          melt_grid.output_vtk(time_step_num);
-        }
-      }
       double global_melting_integral
         = Utilities::MPI::sum (local_melting_integral, this->get_mpi_communicator());
       global_melting_integral*=1.0e-9/this->get_timestep()*year_in_seconds;// Change melt production to km^3/year
@@ -184,6 +175,20 @@ namespace aspect
       std::ostringstream output;
       output.precision(6);
       output << global_melting_integral<<" km^3/year";
+
+      melt_grid.sum_melt_fraction_parallel(this->get_mpi_communicator());
+      if(melt_grid.is_grid_set())
+      {
+        melt_grid.calculate_compression();
+        int my_rank;
+        MPI_Comm_rank(this->get_mpi_communicator(),&my_rank);
+        if(melt_grid_output && my_rank==0)
+        {
+          unsigned int time_step_num = this->get_timestep_number ();
+          melt_grid.output_vtk(time_step_num);
+        }
+      }
+
       return std::pair<std::string, std::string> ("Melting production rate:",
           output.str());
 
@@ -344,6 +349,7 @@ namespace aspect
     MeltStatistics<dim>::MeltGrid::get_compression(const Point<dim> &p) const
     {
       Tensor<1,dim> p0 = MeltStatistics<dim>::transfer_coord(p);
+      if(fabs(p0[1]-R1)<1.e3)p0[1]=R1;
       if(p0[1]>R0 && p0[1]<R1)
       {
         // Linear interpolation
@@ -404,6 +410,13 @@ namespace aspect
         fprintf(fp,"%e\n",matrix_compression[i]);
 
       fclose(fp);
+    }
+
+    template <int dim>
+    void
+    MeltStatistics<dim>::MeltGrid::sum_melt_fraction_parallel(const MPI_Comm &  mpi_communicator)
+    {
+      Utilities::MPI::sum (melt_fraction, mpi_communicator, melt_fraction);
     }
 
     template <int dim>

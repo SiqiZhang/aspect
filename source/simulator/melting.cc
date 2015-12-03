@@ -250,8 +250,8 @@ namespace aspect
   void
   Simulator<dim>::revise_velocity_melt()
   {
-    Postprocess::MeltStatistics<dim> *melt_statistics 
-      = this->postprocess_manager.template find_postprocessor<Postprocess::MeltStatistics<dim> >();
+    const Postprocess::MeltStatistics<dim> *melt_statistics 
+      = this->postprocess_manager.template find_postprocessor<const Postprocess::MeltStatistics<dim> >();
     if(melt_statistics!=NULL)
     {
       LinearAlgebra::BlockVector melt_solution;

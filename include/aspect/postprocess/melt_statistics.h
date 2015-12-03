@@ -90,6 +90,8 @@ namespace aspect
             double get_compression(const Point<dim> &p) const;
 
             void output_vtk(unsigned int time_step_num) const;
+
+            void sum_melt_fraction_parallel(const MPI_Comm &  mpi_communicator);
             
             struct MeltCell
             {
@@ -131,7 +133,6 @@ namespace aspect
         MeltGrid melt_grid;
         int       melt_grid_nh;
         int       melt_grid_nr;
-        double    melt_grid_depth;
         bool      melt_grid_output;
     };
   }
