@@ -49,6 +49,20 @@ namespace aspect
         std::pair<std::string,std::string>
         execute (TableHandler &statistics);
 
+        /**
+         * Declare the parameters this class takes through input files.
+         */
+        static
+        void
+        declare_parameters (ParameterHandler &prm);
+
+        /**
+         * Read the parameters this class declares from the parameter file.
+         */
+        virtual
+        void
+        parse_parameters (ParameterHandler &prm);
+        
         static Tensor<1,dim> transfer_coord(const Point<dim> &p);
 
         /** 
@@ -115,6 +129,10 @@ namespace aspect
 
       private:
         MeltGrid melt_grid;
+        int       melt_grid_nh;
+        int       melt_grid_nr;
+        double    melt_grid_depth;
+        bool      melt_grid_output;
     };
   }
 }

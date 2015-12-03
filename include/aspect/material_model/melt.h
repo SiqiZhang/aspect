@@ -145,7 +145,7 @@ namespace aspect
                                            const std::vector<double> &compositional_fields,
                                            const Point<dim> &postion) const;
 
-      /*
+      /**
        * Get the changed temperature after melt.
        * model given by Katz et al. (2003) and
        * influnces of Cpx and water are included.
@@ -155,7 +155,7 @@ namespace aspect
                                         const std::vector<double> &compositional_fields,
                                         const Point<dim> &position) const;
 
-      /*
+      /**
        * Get the melt fraction iterat through melting relation, 
        * model given by Katz et al. (2003) and
        * influnces of Cpx and water are included.
@@ -164,6 +164,14 @@ namespace aspect
                            const double pressure,
                            const std::vector<double> &compositional_fields,
                            const Point<dim> &position) const;
+
+      /**
+       * Get the extracted melt fraction
+       */
+      double melt_extraction(const double temperature,
+                             const double pressure,
+                             const std::vector<double> &compositional_fields,
+                             const Point<dim> &position) const;
 
       /**
        * @}
@@ -203,6 +211,11 @@ namespace aspect
     double get_viscosity_peierls_inverse     (double temperature, double pressure, double strain_rate_II, double depth) const;
 
     double get_fixed_pressure (const double pressure, const Point<dim> &position) const;
+
+    double get_extraction_depth() const
+    {
+      return extraction_depth;
+    };
 
       private:
     //static const double R_gas = 8.341; //Gas constant.
@@ -254,7 +267,7 @@ namespace aspect
     std::string liquidus_filename;
     std::string model_name;
     double Lh;
-    double extraction_ratio;
+    double extraction_depth;
         
     double get_viscosity_arrhenius (double temperature, double pressure, double strain_rate_II, double A, double E, double V, double n) const;
 

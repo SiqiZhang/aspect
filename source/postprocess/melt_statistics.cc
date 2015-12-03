@@ -20,8 +20,20 @@ namespace aspect
     std::pair<std::string,std::string>
     MeltStatistics<dim>::execute (TableHandler &statistics)
     {
-      //if(!melt_grid.is_grid_set())
-        melt_grid.set_grid(5371.e3,6371.e3,50,360);
+      //Melt data
+      const MaterialModel::Melt<dim> *material_model=dynamic_cast<const MaterialModel::Melt<dim> *>(&this->get_material_model());
+      AssertThrow(material_model != 0,ExcMessage("This postprocess can only be worked with Melt material model."));
+      
+      //Only works with 2D spherical shell geometry.
+      const GeometryModel::SphericalShell<2>* spherical_shell_geometry =
+            dynamic_cast<const GeometryModel::SphericalShell<2>*> (&(this->get_geometry_model()));
+      if(spherical_shell_geometry != NULL)
+      {
+        double R1 = spherical_shell_geometry->R1;
+        double melt_grid_depth = material_model->get_extraction_depth();
+        double R0 = std::max(spherical_shell_geometry->R0, R1 - melt_grid_depth);
+        melt_grid.set_grid(R0,R1,melt_grid_nr,melt_grid_nh);
+      }
 
       // create a quadrature formula based on the temperature element alone.
       // be defensive about determining that what we think is the temperature
@@ -37,9 +49,6 @@ namespace aspect
                                update_values   |
                                update_quadrature_points |
                                update_JxW_values);
-      //Melt data
-      const MaterialModel::Melt<dim> *material_model=dynamic_cast<const MaterialModel::Melt<dim> *>(&this->get_material_model());
-      AssertThrow(material_model != 0,ExcMessage("This postprocess can only be worked with Melt material model."));
       //std::cout<<"Pass melt data"<<std::endl;
 
       std::vector<double> melting_fractions(n_q_points),
@@ -95,7 +104,7 @@ namespace aspect
               corrected_pressure    = this->get_adiabatic_conditions().pressure(fe_values.quadrature_point(q));
             }
 
-            melting_fractions[q]=material_model->melt_fraction(corrected_temperature,corrected_pressure,composition_q,fe_values.quadrature_point(q));
+            melting_fractions[q]=material_model->melt_extraction(corrected_temperature,corrected_pressure,composition_q,fe_values.quadrature_point(q));
           }
           //std::cout<<"Melt fraction set"<<std::endl;
 
@@ -110,7 +119,8 @@ namespace aspect
 
           // Melting treatment
           // TODO: this only works in 2D
-          if(dim==2)
+          if(melt_grid.is_grid_set())
+            if(dim==2)
           {
             double cell_volume=0.;
             double cell_melt=0.;
@@ -140,9 +150,16 @@ namespace aspect
           }
 
         }
-      melt_grid.calculate_compression();
-      unsigned int time_step_num = this->get_timestep_number ();
-      melt_grid.output_vtk(time_step_num);
+
+      if(melt_grid.is_grid_set())
+      {
+        melt_grid.calculate_compression();
+        if(melt_grid_output)
+        {
+          unsigned int time_step_num = this->get_timestep_number ();
+          melt_grid.output_vtk(time_step_num);
+        }
+      }
       double global_melting_integral
         = Utilities::MPI::sum (local_melting_integral, this->get_mpi_communicator());
       global_melting_integral*=1.0e-9/this->get_timestep()*year_in_seconds;// Change melt production to km^3/year
@@ -387,6 +404,49 @@ namespace aspect
         fprintf(fp,"%e\n",matrix_compression[i]);
 
       fclose(fp);
+    }
+
+    template <int dim>
+    void
+    MeltStatistics<dim>::declare_parameters (ParameterHandler &prm)
+    {
+      prm.enter_subsection("Postprocess");
+      {
+        prm.enter_subsection("Melt statistics");
+        {
+          prm.declare_entry("Grid points horizontal","360",
+                            Patterns::Integer(0),
+                            "Seperate uniforme grid is used for melt treatment. "
+                            "This defines the number of points used in horizontal.");
+          prm.declare_entry("Grid points vertical","50",
+                            Patterns::Integer(0),
+                            "Seperate uniforme grid is used for melt treatment. "
+                            "This defines the number of points used in vertical.");
+          prm.declare_entry("Output grid", "false",
+                            Patterns::Bool(),
+                            "Seperate uniforme grid is used for melt treatment. "
+                            "Set this to true will output the grid each timestep to check."); 
+        }
+        prm.leave_subsection();
+      }
+      prm.leave_subsection();
+    }
+
+    template <int dim>
+    void
+    MeltStatistics<dim>::parse_parameters (ParameterHandler &prm)
+    {
+      prm.enter_subsection("Postprocess");
+      {
+        prm.enter_subsection("Melt statistics");
+        {
+          melt_grid_nh      = prm.get_integer("Grid points horizontal");
+          melt_grid_nr      = prm.get_integer("Grid points vertical");
+          melt_grid_output  = prm.get_bool   ("Output grid");
+        }
+        prm.leave_subsection();
+      }
+      prm.leave_subsection();
     }
 
 

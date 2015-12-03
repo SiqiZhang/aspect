@@ -241,7 +241,7 @@ namespace aspect
       }
       else if(model_name=="linear")
         if(i_composition_depletion>0 && i_composition_depletion<(int)compositional_fields.size())
-          new_compositional_fields[i_composition_depletion]+=melt_fraction(temperature,pressure,compositional_fields,position)*extraction_ratio;
+          new_compositional_fields[i_composition_depletion]+=melt_extraction(temperature,pressure,compositional_fields,position);
 
       
 /*
@@ -296,7 +296,7 @@ namespace aspect
       */
       if(model_name=="linear")
         if((int)compositional_variable==i_composition_depletion)
-          delta_C = melt_fraction(temperature,pressure,compositional_fields,position)*extraction_ratio;
+          delta_C = melt_extraction(temperature,pressure,compositional_fields,position);
       return delta_C;
     }
 
@@ -396,6 +396,21 @@ namespace aspect
       }
 
       return fraction;
+    }
+
+    template <int dim>
+    double
+    Melt<dim>::
+    melt_extraction(const double temperature,
+                    const double pressure,
+                    const std::vector<double> &compositional_fields,
+                    const Point<dim> &position) const
+    {
+      double depth = (this->get_geometry_model()).depth(position);
+      if(depth>extraction_depth || extraction_depth==0.)
+        return 0.;
+      else
+        return melt_fraction(temperature,pressure,compositional_fields,position) * depth / extraction_depth; 
     }
 
     template <int dim>
@@ -690,11 +705,10 @@ namespace aspect
             prm.declare_entry ("Latent heat","0",
                                Patterns::Double (),
                                "The latent hear of melt Units: J/kg");
-            prm.declare_entry ("Extraction ratio","0.5",
-                               Patterns::Double (0,1),
-                               "The ratio for melt extraction. Value range 0~1, 0 -- means no extraction;"
-                               "1 -- means fully extraction. Choose value smaller value than 1 is suggested, "
-                               "mainly due to stablization purposes.");
+            prm.declare_entry ("Extraction depth","300e3",
+                               Patterns::Double (0),
+                               "The depth that melt can be extracted to surface. The ratio of melt being extracted "
+                               "to suface decreases from 1 at suface to 0 at this depth. Units: m");
           }
           prm.leave_subsection();
 
@@ -889,7 +903,7 @@ namespace aspect
             aspect::Utilities::replace_path(liquidus_filename);
 
             Lh = prm.get_double ("Latent heat");
-            extraction_ratio = prm.get_double ("Extraction ratio");
+            extraction_depth = prm.get_double ("Extraction depth");
           }
           prm.leave_subsection();
 
