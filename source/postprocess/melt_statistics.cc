@@ -348,6 +348,8 @@ namespace aspect
     double
     MeltStatistics<dim>::MeltGrid::get_compression(const Point<dim> &p) const
     {
+      if(!is_grid_set())
+        return 0.;
       Tensor<1,dim> p0 = MeltStatistics<dim>::transfer_coord(p);
       if(fabs(p0[1]-R1)<1.e3)p0[1]=R1;
       if(p0[1]>R0 && p0[1]<R1)

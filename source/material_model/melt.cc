@@ -410,7 +410,7 @@ namespace aspect
       if(depth>extraction_depth || extraction_depth==0.)
         return 0.;
       else
-        return melt_fraction(temperature,pressure,compositional_fields,position) * depth / extraction_depth; 
+        return melt_fraction(temperature,pressure,compositional_fields,position) * (1.0-std::max(0.,depth / extraction_depth)); 
     }
 
     template <int dim>
