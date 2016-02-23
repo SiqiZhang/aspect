@@ -111,7 +111,7 @@ namespace aspect
       fraction=0.;
 
       //Depletion will increase solidus
-      T_solidus+=depletion*(T_liquidus-T_solidus);
+      //T_solidus+=depletion*(T_liquidus-T_solidus);
 
       // Olivine liquidus depression. (water in the units of wt%)
       // From MÃ©dard, E. and T. L. Grove (2007). "The effect of H2O on the olivine liquidus of basaltic melts: 
@@ -121,13 +121,16 @@ namespace aspect
       T_liquidus+=deltaT;
       // Avoid solidus>liquidus
       if(T_solidus>T_liquidus)T_solidus=T_liquidus;
+      const double T_depletion = T_solidus + depletion*(T_liquidus-T_solidus);
       //Depletion will reduce melt production capability
-      if(T<=T_solidus) 
+      //if(T<=T_solidus)
+      if(T<=T_depletion)
         fraction=0.;
       else if(T>T_liquidus) 
         fraction=1.;
       else 
-        fraction=(T-T_solidus)/(T_liquidus-T_solidus)*(1.-depletion);
+        //fraction=(T-T_solidus)/(T_liquidus-T_solidus)*(1.-depletion);
+        fraction = (T_depletion - T_solidus)/(T_liquidus-T_solidus);
       /*
       if(T_solidus<T && T<T_liquidus)
          std::cout<<"T="<<T<<","
