@@ -153,6 +153,7 @@ namespace aspect
              const Point<dim> &position) const
     {
       const double fixed_pressure=get_fixed_pressure(pressure,position);
+      const double depth = (this->get_geometry_model()).depth(position);
       double rho = Steinberger<dim>::density(temperature,fixed_pressure,compositional_fields,position);
       if(density_difference.size()!=0 && density_difference.size()==compositional_fields.size())
       {
@@ -162,11 +163,17 @@ namespace aspect
           if(is_composition_distinct)
           {
             if(compositional_fields[i]>composition_factor[i])
+            {
               rho += density_difference[i];
+              if(basalt_compositon_num == i && depth>eclogite_depth)
+                rho += eclogite_density_diff;
+            }
           }
           else
           {
             rho += density_difference[i] * compositional_fields[i]/composition_factor[i];
+            if(basalt_compositon_num == i && depth>eclogite_depth)
+                rho += eclogite_density_diff * compositional_fields[i]/composition_factor[i];
           }
         }
       }
@@ -712,6 +719,21 @@ namespace aspect
           }
           prm.leave_subsection();
 
+          prm.enter_subsection ("Eclogite phase change");
+          {
+            prm.declare_entry ("Depth","100e3",
+                               Patterns::Double (),
+                               "The depth of basalt-eclogite transition. Unit: m");
+            prm.declare_entry ("Composition number","-1",
+                               Patterns::Integer(),
+                               "The composition number of basalt layer. "
+                               "If set to -1 will ignore this transition.");
+            prm.declare_entry ("Density change","500",
+                               Patterns::Double (),
+                               "The density change of basalt-eclogite transition. Unit: kg/m^3");
+          }
+          prm.leave_subsection();
+
           prm.enter_subsection ("Melting Composition");
           {
             prm.declare_entry ("Cpx","-1",
@@ -904,6 +926,14 @@ namespace aspect
 
             Lh = prm.get_double ("Latent heat");
             extraction_depth = prm.get_double ("Extraction depth");
+          }
+          prm.leave_subsection();
+
+          prm.enter_subsection ("Eclogite phase change");
+          {
+            eclogite_depth        = prm.get_double  ("Depth");
+            basalt_compositon_num = prm.get_integer ("Composition number");
+            eclogite_density_diff = prm.get_double  ("Density change");
           }
           prm.leave_subsection();
 

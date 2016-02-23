@@ -225,6 +225,10 @@ namespace aspect
     int i_composition_depletion;
     double default_Cpx;
 
+    double eclogite_depth;
+    int    basalt_compositon_num;
+    double eclogite_density_diff;
+
     double exponential_melt;
     double depth_lower;
     double viscosity_cutoff_low;
