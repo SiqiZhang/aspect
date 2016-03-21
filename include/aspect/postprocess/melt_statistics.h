@@ -85,7 +85,7 @@ namespace aspect
 
             bool is_grid_set() const;
 
-            void calculate_compression();
+            double calculate_compression();
 
             double get_compression(const Point<dim> &p) const;
 
@@ -134,6 +134,7 @@ namespace aspect
         int       melt_grid_nh;
         int       melt_grid_nr;
         bool      melt_grid_output;
+        double    max_extraction_rate;
     };
   }
 }

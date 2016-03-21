@@ -130,7 +130,7 @@ namespace aspect
         fraction=1.;
       else 
         //fraction=(T-T_solidus)/(T_liquidus-T_solidus)*(1.-depletion);
-        fraction = (T_depletion - T_solidus)/(T_liquidus-T_solidus);
+        fraction = (T-T_depletion)/(T_liquidus-T_solidus);
       /*
       if(T_solidus<T && T<T_liquidus)
          std::cout<<"T="<<T<<","
@@ -184,6 +184,7 @@ namespace aspect
     {
       double fraction1=Melting_fraction(T,P-dP,0.,water,depletion);
       double fraction2=Melting_fraction(T,P+dP,0.,water,depletion);
+      //printf("P=%e T=%e Water=%e Depletion=%e F1=%e F2=%e dF/dP=%e\n",P,T,water,depletion,fraction1,fraction2,(fraction2-fraction1)/dP/2.);
       return (fraction2-fraction1)/dP/2.;
     }
 

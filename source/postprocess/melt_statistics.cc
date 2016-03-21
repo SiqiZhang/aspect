@@ -105,6 +105,11 @@ namespace aspect
             }
 
             melting_fractions[q]=material_model->melt_extraction(corrected_temperature,corrected_pressure,composition_q,fe_values.quadrature_point(q));
+            //if(melting_fractions[q]>0)
+            //{  
+            //  printf("P=%e T=%e F=%e dF/dP=%e\n",corrected_pressure,corrected_temperature,melting_fractions[q]
+            //      ,material_model->entropy_derivative(corrected_temperature,corrected_pressure,composition_q,fe_values.quadrature_point(q),aspect::MaterialModel::NonlinearDependence::pressure));
+            //}
           }
           //std::cout<<"Melt fraction set"<<std::endl;
 
@@ -326,10 +331,11 @@ namespace aspect
     }
 
     template<int dim>
-    void
+    double
     MeltStatistics<dim>::MeltGrid::calculate_compression() 
     {
       //matrix_compression.assign((nr+1)*(nh+1),0.);
+      double max_compression = 0.;
       for(int i=0;i<=(int)nh;i++)
         for(int j=1;j<=(int)nr;j++)
         {
@@ -339,9 +345,13 @@ namespace aspect
           double r1  = (R0+dr*j);
           double dr1 = r1 - sqrt((r0-dr0)*(r0-dr0)+(1.-fraction)*(r1*r1-r0*r0));
           matrix_compression[point_index(i,j)] = dr1;
+          if(max_compression<dr1) max_compression=dr1;
           //if(i==0 || i==(int)nh)std::cout<<j<<" cell["<<i%nh<<","<<(j-1)<<"] ("<<cell_index(i%nh,(j-1)) <<")"
           //  <<" & ["<<((i-1)%(int)nh+nh)%nh<<","<<(j-1)<<"] ("<<cell_index(((i-1)%(int)nh+nh)%nh,(j-1)) <<")"<<std::endl;
+
+
         }
+      return max_compression;
     }
 
     template<int dim>

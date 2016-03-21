@@ -336,10 +336,13 @@ namespace aspect
       }
       if(model_name=="linear")
       {
+        double depletion=0.;
+        if(i_composition_depletion>0 && i_composition_depletion<(int)compositional_fields.size())
+            depletion=std::max(0.,std::min(1.,compositional_fields[i_composition_depletion]));
         if (dependence == NonlinearDependence::temperature)
-          return -Data_Melt.get_melt_fraction_derivative_temperature(temperature,pressure,0.,0.)*Lh/temperature;
+          return -Data_Melt.get_melt_fraction_derivative_temperature(temperature,pressure,0.,depletion)*Lh/temperature;
         else if (dependence == NonlinearDependence::pressure)
-          return -Data_Melt.get_melt_fraction_derivative_pressure(temperature,pressure,0.,0.)*Lh/temperature;
+          return -Data_Melt.get_melt_fraction_derivative_pressure(temperature,pressure,0.,depletion)*Lh/temperature;
       }
       return 0.;
     }
@@ -1001,7 +1004,10 @@ namespace aspect
       else if(compositional_fields.size()==(k_values.size()-1))
       {
         double k_return=0;
-        double res_compositon=1.;
+        double res_composition=1.;
+        double sum_composition=0.;
+        for(unsigned i=0;i<compositional_fields.size();i++)
+          sum_composition += compositional_fields[i];
         for(unsigned i=0;i<compositional_fields.size();i++)
         {
           if(is_composition_distinct)
@@ -1014,12 +1020,13 @@ namespace aspect
             if(compositional_fields[i]>0)
             {
               double fixed_compostion=std::min(1.0,compositional_fields[i]);
-              k_return+=k_values[i+1]*fixed_compostion;
-              res_compositon-=fixed_compostion;
+              if(sum_composition>1.)fixed_compostion /= sum_composition;
+              k_return += k_values[i+1]*fixed_compostion;
+              res_composition-=fixed_compostion;
             }
           }
         }
-        k_return+=k_values[0]*std::max(0.,res_compositon);
+        k_return+=k_values[0]*std::max(0.,res_composition);
         return k_return;
       }
       else
