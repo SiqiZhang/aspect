@@ -148,9 +148,9 @@ namespace aspect
               std::swap(cell0.h0,cell0.h1);
               cell0.h1 += 2.*M_PI;
             }
-            //std::cout<<"0 r="<<p0[1]<<", theta="<<p0[0]<<std::endl;
-            //std::cout<<"1 r="<<p1[1]<<", theta="<<p1[0]<<std::endl;
-            //std::cout<<"2 r="<<p2[1]<<", theta="<<p2[0]<<std::endl;
+            std::cout<<"0 r="<<p0[1]<<", theta="<<p0[0]<<std::endl;
+            std::cout<<"1 r="<<p1[1]<<", theta="<<p1[0]<<std::endl;
+            std::cout<<"2 r="<<p2[1]<<", theta="<<p2[0]<<std::endl;
             melt_grid.add_melt(cell0.h0,cell0.h1,cell0.r0,cell0.r1,cell_melt/cell_volume);
           }
 
@@ -190,6 +190,7 @@ namespace aspect
         if(melt_grid_output && my_rank==0)
         {
           unsigned int time_step_num = this->get_timestep_number ();
+          std::cout<<"Outputing melt grid "<<time_step_num<<std::endl;
           melt_grid.output_vtk(time_step_num);
         }
       }
@@ -277,21 +278,21 @@ namespace aspect
       for(int i=ih_start;i<ih_end;i++)
       {
         struct MeltCell cell_b;
-        cell_b.h0=dh*(i%nh);
-        cell_b.h1=dh*(i%nh+1);
+        cell_b.h0=dh*i;
+        cell_b.h1=dh*(i+1);
         for(int j=ir_start;j<ir_end;j++)
         {
           cell_b.r0=R0+dr*j;
           cell_b.r1=R0+dr*(j+1);
-          /*
+          
           std::cout<<"Adding cell["<<cell_a.h0<<"-"<<cell_a.h1<<"]["<<cell_a.r0<<"-"<<cell_a.r1<<
                      "] ["<<ih_start<<"-"<<ih_end<<"]["<<ir_start<<"-"<<ir_end<<"] "<<
                      "to cell [" <<cell_b.h0<<","<<cell_b.h1<<"]-["<<cell_b.r0<<","<<cell_b.r1<<
-                     "] ["<<i<<"]["<<j<<"]" <<std::endl;
-                     */
+                     "] ["<<i<<"]["<<j<<"]" <<" f="<<f<<std::endl;
+                     
           struct MeltCell cell_c=get_overlapping_cell(cell_a,cell_b);
-          melt_fraction[cell_index(i,j)]+=f*get_volume(cell_c)/get_volume(cell_b);
-          //std::cout<<"Volume overlapping "<<get_volume(cell_c)<<", cell volume "<<get_volume(cell_b)<<std::endl;
+          melt_fraction[cell_index(i%nh,j)]+=f*get_volume(cell_c)/get_volume(cell_b);
+          std::cout<<"Volume overlapping "<<get_volume(cell_c)<<", cell volume "<<get_volume(cell_b)<<", df="<<f*get_volume(cell_c)/get_volume(cell_b)<<std::endl;
         }
       }
     }
