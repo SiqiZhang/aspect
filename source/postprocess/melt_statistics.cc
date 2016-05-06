@@ -56,7 +56,6 @@ namespace aspect
                           pressure(n_q_points),
                           water(n_q_points),
                           depletion(n_q_points);
-      std::vector<std::vector<double> > composition_fields;
 
       typename DoFHandler<dim>::active_cell_iterator
       cell = this->get_dof_handler().begin_active(),
@@ -69,6 +68,7 @@ namespace aspect
       for (; cell!=endc; ++cell)
         if (cell->is_locally_owned())
         {
+          std::vector<std::vector<double> > composition_fields;
           fe_values.reinit (cell);
           fe_values[this->introspection().extractors.temperature].get_function_values (
               this->get_solution(),temperature);
@@ -95,7 +95,7 @@ namespace aspect
             if(material_model->is_compressible())
             {
               corrected_temperature = temperature[q];
-              corrected_pressure    = pressure[q];
+              corrected_pressure    = std::max(0.,pressure[q]);
             }
             else
             {
@@ -103,6 +103,8 @@ namespace aspect
                                                      - this->get_adiabatic_surface_temperature();
               corrected_pressure    = this->get_adiabatic_conditions().pressure(fe_values.quadrature_point(q));
             }
+            // Always use adiabatic pressure.
+            //corrected_pressure    = this->get_adiabatic_conditions().pressure(fe_values.quadrature_point(q));
 
             melting_fractions[q]=material_model->melt_extraction(corrected_temperature,corrected_pressure,composition_q,fe_values.quadrature_point(q));
             //if(melting_fractions[q]>0)
@@ -148,10 +150,14 @@ namespace aspect
               std::swap(cell0.h0,cell0.h1);
               cell0.h1 += 2.*M_PI;
             }
-            std::cout<<"0 r="<<p0[1]<<", theta="<<p0[0]<<std::endl;
-            std::cout<<"1 r="<<p1[1]<<", theta="<<p1[0]<<std::endl;
-            std::cout<<"2 r="<<p2[1]<<", theta="<<p2[0]<<std::endl;
-            melt_grid.add_melt(cell0.h0,cell0.h1,cell0.r0,cell0.r1,cell_melt/cell_volume);
+            if(cell_melt>0.)
+            {
+              //std::cout<<"0 r="<<p0[1]<<", theta="<<p0[0]<<std::endl;
+              //std::cout<<"1 r="<<p1[1]<<", theta="<<p1[0]<<std::endl;
+              //std::cout<<"2 r="<<p2[1]<<", theta="<<p2[0]<<std::endl;
+              //std::cout<<"cell melt "<<cell_melt<<", cell volume "<<cell_volume<<", melt fraction "<<cell_melt/cell_volume<<std::endl;
+              melt_grid.add_melt(cell0.h0,cell0.h1,cell0.r0,cell0.r1,cell_melt/cell_volume);
+            }
           }
 
         }
@@ -284,15 +290,16 @@ namespace aspect
         {
           cell_b.r0=R0+dr*j;
           cell_b.r1=R0+dr*(j+1);
-          
+          /*
           std::cout<<"Adding cell["<<cell_a.h0<<"-"<<cell_a.h1<<"]["<<cell_a.r0<<"-"<<cell_a.r1<<
                      "] ["<<ih_start<<"-"<<ih_end<<"]["<<ir_start<<"-"<<ir_end<<"] "<<
                      "to cell [" <<cell_b.h0<<","<<cell_b.h1<<"]-["<<cell_b.r0<<","<<cell_b.r1<<
                      "] ["<<i<<"]["<<j<<"]" <<" f="<<f<<std::endl;
+                     */
                      
           struct MeltCell cell_c=get_overlapping_cell(cell_a,cell_b);
           melt_fraction[cell_index(i%nh,j)]+=f*get_volume(cell_c)/get_volume(cell_b);
-          std::cout<<"Volume overlapping "<<get_volume(cell_c)<<", cell volume "<<get_volume(cell_b)<<", df="<<f*get_volume(cell_c)/get_volume(cell_b)<<std::endl;
+          //std::cout<<"Volume overlapping "<<get_volume(cell_c)<<", cell volume "<<get_volume(cell_b)<<", df="<<f*get_volume(cell_c)/get_volume(cell_b)<<std::endl;
         }
       }
     }

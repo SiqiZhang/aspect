@@ -399,6 +399,8 @@ namespace aspect
          double depletion=0.;
          if(i_composition_depletion>0 && i_composition_depletion<(int)compositional_fields.size())
            depletion=std::max(0.,std::min(1.,compositional_fields[i_composition_depletion]));
+         //if(depletion>0.)
+         //  std::cout<<"depletion = "<<depletion<<std::endl;
          if(fraction>depletion)
            return fraction-depletion;
          else
@@ -420,7 +422,12 @@ namespace aspect
       if(depth>extraction_depth || extraction_depth==0.)
         return 0.;
       else
-        return melt_fraction(temperature,pressure,compositional_fields,position) * (1.0-std::max(0.,depth / extraction_depth)); 
+      {
+        double f_extraction = melt_fraction(temperature,pressure,compositional_fields,position) * (1.0-std::max(0.,depth / extraction_depth));
+        //if(f_extraction > .5)
+        //  std::cout<<"P="<<pressure<<",T="<<temperature<<",Depth="<<depth<<",F="<<f_extraction<<std::endl;
+        return f_extraction; 
+      }
     }
 
     template <int dim>

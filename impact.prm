@@ -190,7 +190,8 @@ end
 
 subsection Termination criteria
   set Checkpoint on termination = true  
-  set Termination criteria      = user request 
+  set Termination criteria      = user request, wall time
+  set Wall time                 = 60
 end
 
 
