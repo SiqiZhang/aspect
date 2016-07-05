@@ -72,7 +72,8 @@ namespace aspect
                         double R0,
                         const Tensor<1,2> &surface_point_one,
                         const Tensor<1,2> &surface_point_two,
-                        ConditionalOStream &pcout);
+                        ConditionalOStream &pcout,
+                        double melt_res = 0.);
         double deltaT(const Point<dim> &p, double pressure, double temperature);
         void update_time(double time);
       private:
@@ -89,6 +90,7 @@ namespace aspect
         double old_time;
         double R0;
         internal::Rotate rotate;
+        double melt_res;
     };
   }
 }

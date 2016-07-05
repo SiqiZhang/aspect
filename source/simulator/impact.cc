@@ -37,9 +37,11 @@ namespace aspect
                                     double R0,
                                     const Tensor<1,2> &surface_point_one,
                                     const Tensor<1,2> &surface_point_two,
-                                    ConditionalOStream &pcout)
+                                    ConditionalOStream &pcout,
+                                    double melt_res)
     {
       old_time=time0;
+      this->melt_res = melt_res;
       //Read data & fill in vector Impacts_all;
       double lat,lon;
       const double D2P=acos(-1.)/180.;
@@ -179,22 +181,28 @@ namespace aspect
       }
       //if(dT==0)return(temperature);
       //std::cout<<"["<<p<<"] r="<<r<<", Pd="<<Pd<<",T0="<<temperature<<",dT="<<dT<<std::endl;
-      double T_solid;
+      double T_solidus, T_liquidus;
       const MaterialModel::Melt<dim> *material_model=dynamic_cast<const MaterialModel::Melt<dim> *>(&(this->get_material_model()));
       AssertThrow(material_model != 0,ExcMessage("This impact module can only be worked with Melt material model."));
       
       if(material_model->Data_Melt.is_initialized())
-        T_solid=material_model->Data_Melt.get_solidus(pressure,sqrt(p.square()),0,0);
+      {
+        // TODO: dry mantle with no depletion is used at the moment
+        T_solidus  = material_model->Data_Melt.get_solidus (pressure,sqrt(p.square()),0,0);
+        T_liquidus = material_model->Data_Melt.get_liquidus(pressure,sqrt(p.square()),0,0);
+      }
       else
       {      
         if(pressure <12.e9)
-          T_solid=1374.+130.e-9*pressure-5.6e-18*pow(pressure,2);
+          T_solidus = 1374.+130.e-9*pressure-5.6e-18*pow(pressure,2);
         else
-          T_solid=1374.+130.e-9*12.e9-5.6e-18*pow(12.e9,2)+(pressure-12.e9)*15.e-9;
+          T_solidus = 1374.+130.e-9*12.e9-5.6e-18*pow(12.e9,2)+(pressure-12.e9)*15.e-9;
+        T_liquidus = T_solidus;
       }
 
-      if(temperature+dT>T_solid)
-        return(std::max(T_solid,temperature));
+      double T_melt = T_solidus + (T_liquidus - T_solidus) * melt_res;
+      if(temperature+dT>T_melt)
+        return(std::max(T_melt,temperature));
       else
         return(temperature+dT);
     }
