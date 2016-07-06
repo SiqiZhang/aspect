@@ -85,8 +85,8 @@ namespace aspect
             }
               
             if(pressure>0)
-              //computed_quantities[q](0) = material_model->melt_fraction(corrected_temperature,corrected_pressure,composition,evaluation_points[q]);
-              computed_quantities[q](0) = material_model->melt_extraction(corrected_temperature,corrected_pressure,composition,evaluation_points[q]);
+              computed_quantities[q](0) = material_model->melt_fraction(corrected_temperature,corrected_pressure,composition,evaluation_points[q]);
+              //computed_quantities[q](0) = material_model->melt_extraction(corrected_temperature,corrected_pressure,composition,evaluation_points[q]);
             else
               computed_quantities[q](0) = 0.;
           }
