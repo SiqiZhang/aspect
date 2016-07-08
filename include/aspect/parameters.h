@@ -201,6 +201,7 @@ namespace aspect
      */
     bool                           include_impacts;
     std::string                    Impacts_datafile;
+    double                         Impacts_melt_residue;
     Tensor<1,2>                    surface_point_one;
     Tensor<1,2>                    surface_point_two;
     

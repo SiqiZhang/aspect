@@ -2047,7 +2047,8 @@ namespace aspect
                          spherical_shell_geometry->R1,
                          parameters.surface_point_one,
                          parameters.surface_point_two,
-                         pcout);
+                         pcout,
+                         parameters.Impacts_melt_residue);
     }
 
     // start the principal loop over time steps:

@@ -316,6 +316,13 @@ namespace aspect
                              "Point that determines the plane in which a 2D model lies in. "
                              "Has to be in the format 'a,b' where a and b are latitude "
                              " and longitude in degree.");
+          prm.declare_entry ("Melt residue","0.",
+                             Patterns::Double(0,1),
+                             "The residue melt fraction after the impact crator is freezed. "
+                             "With this set to 0, the temperature perturbation will limited "
+                             "by mantle solidus. With this set to a value between 0 and 1,  "
+                             "this limitation will change to a temperature between solidus  "
+                             "and liquidus.");
       }
       prm.leave_subsection();
 
@@ -850,6 +857,7 @@ namespace aspect
       {
         Impacts_datafile=prm.get("Data file");
         aspect::Utilities::replace_path(Impacts_datafile);
+        Impacts_melt_residue = prm.get_double("Melt residue");
         std::vector<double> point_one, point_two;
         point_one = dealii::Utilities::string_to_double
                     (dealii::Utilities::split_string_list(prm.get("Point one")));
