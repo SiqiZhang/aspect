@@ -270,6 +270,8 @@ namespace aspect
         for(unsigned j=0;j<3;j++)p1[j]=tensor_p_rotated[j];
         return p1;
       }
+      template Point<3> Rotate::get_new_coord(const Point<2> &) const;
+      template Point<3> Rotate::get_new_coord(const Point<3> &) const;
 
       template<int dim>
       void Rotate::screen_output(const Tensor<1,2> &surface_point_one,

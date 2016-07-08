@@ -204,6 +204,9 @@ namespace aspect
       initialize();
 
       aspect::melting::Melting_data Data_Melt;
+
+      double get_water(const std::vector<double> &compositional_fields) const;
+      double get_depletion(const std::vector<double> &compositional_fields) const;
     
     double get_viscosity_diffusion_inverse   (double temperature, double pressure, double depth) const;
     double get_viscosity_dislocation_inverse (double temperature, double pressure, double strain_rate_II, double depth) const;

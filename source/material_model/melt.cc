@@ -556,6 +556,26 @@ namespace aspect
     }
 
     template <int dim>
+    double
+    Melt<dim>::get_water(const std::vector<double> &compositional_fields) const
+    {
+      if(i_composition_H2O>0 && i_composition_H2O<compositional_fields.size())
+        return std::max(0.,std::min(1.,compositional_fields[i_composition_H2O]));
+      else
+        return 0.;
+    }
+
+    template <int dim>
+    double
+    Melt<dim>::get_depletion(const std::vector<double> &compositional_fields) const
+    {
+      if(i_composition_depletion>0 && i_composition_depletion<compositional_fields.size())
+        return std::max(0.,std::min(1.,compositional_fields[i_composition_depletion]));
+      else
+        return 0.;
+    }
+
+    template <int dim>
     void
     Melt<dim>::declare_parameters (ParameterHandler &prm)
     {
