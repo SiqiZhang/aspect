@@ -22,6 +22,7 @@
 
 #include <aspect/heating_model/impact.h>
 #include <aspect/geometry_model/interface.h>
+#include <aspect/geometry_model/spherical_shell.h>
 #include <aspect/global.h>
 #include <aspect/utilities.h>
 #include <aspect/material_model/melt.h>
@@ -46,8 +47,13 @@ namespace aspect
       const double D2P=acos(-1.)/180.;
       struct Impact_Data Data1;
       char temp[256];
-      //TODO: setup R0
-      const double R0=6371e3;
+	  const GeometryModel::SphericalShell<dim>* spherical_shell_geometry =
+		  dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&(this->get_geometry_model()));
+	  AssertThrow (spherical_shell_geometry != NULL,
+			       ExcMessage ("This impact heating model is only implemented if the geometry is "
+				               "in fact a spherical shell."));
+	  const double R0 = spherical_shell_geometry->outer_radius();
+
       std::ifstream in(filename.c_str(), std::ios::in);
       AssertThrow(in, ExcMessage(std::string("Couldn't open file <")+filename));
       in.getline(temp,256);
