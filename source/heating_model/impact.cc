@@ -47,12 +47,12 @@ namespace aspect
       const double D2P=acos(-1.)/180.;
       struct Impact_Data Data1;
       char temp[256];
-	  const GeometryModel::SphericalShell<dim>* spherical_shell_geometry =
-		  dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&(this->get_geometry_model()));
-	  AssertThrow (spherical_shell_geometry != NULL,
-			       ExcMessage ("This impact heating model is only implemented if the geometry is "
-				               "in fact a spherical shell."));
-	  const double R0 = spherical_shell_geometry->outer_radius();
+      const GeometryModel::SphericalShell<dim>* spherical_shell_geometry =
+        dynamic_cast<const GeometryModel::SphericalShell<dim>*> (&(this->get_geometry_model()));
+      AssertThrow (spherical_shell_geometry != NULL,
+                   ExcMessage ("This impact heating model is only implemented if the geometry is "
+                               "in fact a spherical shell."));
+      const double R0 = spherical_shell_geometry->outer_radius();
 
       std::ifstream in(filename.c_str(), std::ios::in);
       AssertThrow(in, ExcMessage(std::string("Couldn't open file <")+filename));
@@ -164,19 +164,35 @@ namespace aspect
         }
         else
         {
+          /**
+           * Pierazzo et al. (1997) => Robert et al. (2009)  
+           * Doesn't work with low impact velocity.
+           */
           //Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,-1.84+2.61*log10(Impacts_active[i].velocity/1.e3));
-          Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,-1.68+2.74*log10(Uc/1.e3));
-          //Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,1.25+0.625*log10(Impacts_active[i].velocity/1.e3));
+          
+          /** 
+           * By Craig, from SPH simulations.
+           * Has problem with low impact velocity as well.
+           */
+          //Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,-1.68+2.74*log10(Uc/1.e3));
+          
+          /** 
+           * Ahrens & O'Keefe (1987) but with different sign.
+           * Seems working fine with different impact velocities.
+           */
+          Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,1.25+0.625*log10(Impacts_active[i].velocity/1.e3));
         }
         Pd=Ps;
         if(Pd>0.)
         {
-          //Beta=pow(C,2)*Rho0/(2.*S);
-          //f=-Pd/Beta/(1-sqrt(2.*Pd/Beta+1.));
-          f= -2*S*Pd/(C*C*Rho0) * pow((1 - sqrt(4*S*Pd/(C*C*Rho0) + 1.0)),-1);
+          Beta=pow(C,2)*Rho0/(2.*S);
+          f=-Pd/Beta/(1-sqrt(2.*Pd/Beta+1.));
+          
+          // By Craig
           //dT+=(Pd/(2.5*Rho0*S)*(1.-1./f)-pow(C/S,2)*(f-log(f)-1))/Cp;
-          /// Check ln vs log
-          dT+=(Pd/(2.5*Rho0*S)*(1.-1./f)-pow(C/S,2)*(f-log(f)-1))/Cp;
+          
+          // Robert et al. (2009)
+          dT+=(Pd/(2.*Rho0*S)*(1.-1./f)-pow(C/S,2)*(f-log(f)-1))/Cp;
         }
       }
       if(dT < 0.0) {
