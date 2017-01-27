@@ -267,6 +267,16 @@ namespace aspect
     double prefactor_peierls;
     double stress_exponent_peierls;
 
+    int num_phases;
+    std::vector<double> phase_pressures;
+    std::vector<double> phase_temperatures;
+    std::vector<double> phase_slopes;
+    std::vector<double> phase_width;
+    std::vector<double> phase_A;
+    std::vector<double> phase_E;
+    std::vector<double> phase_V;
+    std::vector<double> phase_n;
+
 
     std::vector<double> k_values;
     bool is_k_depends_on_composition;

@@ -112,6 +112,45 @@ namespace aspect
        viscosity*=std::exp(-std::log(exponential_melt)*Melt_fraction);
        */
 
+      //Phase changes
+      double phase_viscosity = viscosity;
+      for(int i=num_phases-1;i>=0;i--)
+      {
+        double phase_pressure = phase_pressures[i] 
+          + phase_slopes[i] * ( temperature - phase_temperatures[i] );
+        if(pressure>(phase_pressure - phase_width[i]))
+        {
+          double phase_viscosity = get_viscosity_arrhenius(temperature,pressure,strain_rate_II,
+                                                           phase_A[i],
+                                                           phase_E[i],
+                                                           phase_V[i],
+                                                           phase_n[i]);
+          if(pressure<(phase_pressure + phase_width[i]))
+            // In phase transition zone.
+          {
+            double viscosity_pre;
+            if(i==0)
+              viscosity_pre = viscosity;
+            else
+              viscosity_pre = get_viscosity_arrhenius(temperature,pressure,strain_rate_II,
+                                                      phase_A[i-1],
+                                                      phase_E[i-1],
+                                                      phase_V[i-1],
+                                                      phase_n[i-1]);
+            // Viscosity smoothing. Linear variation in magnitude in phase transition zone.
+            viscosity = viscosity_pre * pow(phase_viscosity/viscosity_pre,
+                (pressure - (phase_pressure - phase_width[i]))/(2.*phase_width[i]));
+
+          }
+          else
+            viscosity = phase_viscosity;
+          break;
+        }
+
+
+
+      }
+
 
        // Apply cutoff
        viscosity = std::min(viscosity,viscosity_cutoff_high);
@@ -725,6 +764,46 @@ namespace aspect
                                   "Stress exponent for dislocation creep");
              }
              prm.leave_subsection();
+
+             // Phase changes
+             prm.enter_subsection ("Phase changes");
+             {
+               prm.declare_entry ("Number of phase changes","0",
+                                  Patterns::Integer(0),
+                                  "The number of phase change surfaces. Phase changes discribed as "
+                                  "reference pressures and Clapeyron slopes. A new set of viscosity "
+                                  "parameters (A,E,V,n) can be given for different phases. The "
+                                  "viscosity is calculated as: "
+                                  "viscosity=A^(1/n)*strain_rate^((n-1)/n)*(E+P*V)/(n*R*T)");
+               prm.declare_entry ("Pressures","",
+                                  Patterns::List(Patterns::Double ()),
+                                  "List of reference pressures for each phase change surface. "
+                                  "The pressure list given here has to be in order that the lower "
+                                  "pressure goes fist. And the phase will be checked from the bottom "
+                                  "of the list. Unit: Pa");
+               prm.declare_entry ("Temperatures","",
+                                  Patterns::List(Patterns::Double ()),
+                                  "List of reference temperatures for each phase change surface. Unit: K");
+               prm.declare_entry ("Clapeyron slopes","",
+                                  Patterns::List(Patterns::Double ()),
+                                  "List of Clapeyron slopes for each phase change surface. Unit: Pa/K");
+               prm.declare_entry ("Transition zone thickness","",
+                                  Patterns::List(Patterns::Double ()),
+                                  "List of transition zone thickness in pressure. Unist: Pa");
+               prm.declare_entry ("A","",
+                                  Patterns::List(Patterns::Double ()),
+                                  "List of viscosity prefactors");
+               prm.declare_entry ("E","",
+                                  Patterns::List(Patterns::Double ()),
+                                  "List of viscosity activation energy. Unit: J/mol");
+               prm.declare_entry ("V","",
+                                  Patterns::List(Patterns::Double ()),
+                                  "List of viscosity activation volume. Unit: m^3/mol");
+               prm.declare_entry ("n","",
+                                  Patterns::List(Patterns::Double ()),
+                                  "List of viscosity stress exponent.");
+             }
+             prm.leave_subsection();
           }
           prm.leave_subsection();
 
@@ -942,6 +1021,53 @@ namespace aspect
               activation_volume_peierls        = prm.get_double ("V");
               prefactor_peierls                = prm.get_double ("A");
               stress_exponent_peierls          = prm.get_double ("n");
+            }
+            prm.leave_subsection();
+
+            // Phase changes
+            prm.enter_subsection ("Phase changes");
+            {
+              num_phases = prm.get_integer ("Number of phase changes");
+              phase_pressures =  dealii::Utilities::string_to_double(
+                  dealii::Utilities::split_string_list(prm.get("Pressures")));
+              AssertThrow(num_phases==phase_pressures.size(),
+                  ExcMessage("The number of elements in the pressure list "
+                    "does not match number of phase changes."));
+              phase_temperatures =  dealii::Utilities::string_to_double(
+                  dealii::Utilities::split_string_list(prm.get("Temperatures")));
+              AssertThrow(num_phases==phase_temperatures.size(),
+                  ExcMessage("The number of elements in the temperature list "
+                    "does not match number of phase changes."));              
+              phase_slopes = dealii::Utilities::string_to_double(
+                  dealii::Utilities::split_string_list(prm.get("Clapeyron slopes")));
+              AssertThrow(num_phases==phase_slopes.size(),
+                  ExcMessage("The number of elements in the Clapeyron slopes list "
+                    "does not match number of phase changes."));
+              phase_width = dealii::Utilities::string_to_double(
+                  dealii::Utilities::split_string_list(prm.get("Transition zone thickness")));
+              AssertThrow(num_phases==phase_width.size(),
+                  ExcMessage("The number of elements in the transition zone thickness list " 
+                    "does not match number of phase changes."));
+              phase_A = dealii::Utilities::string_to_double(
+                  dealii::Utilities::split_string_list(prm.get("A")));
+              AssertThrow(num_phases==phase_A.size(),
+                  ExcMessage("The number of elements in the viscosity factor (A) list "
+                    "does not match number of phase changes."));
+              phase_E = dealii::Utilities::string_to_double(
+                  dealii::Utilities::split_string_list(prm.get("E")));
+              AssertThrow(num_phases==phase_E.size(),
+                  ExcMessage("The number of elements in the activation energy (E) list "
+                    "does not match number of phase changes."));
+              phase_V = dealii::Utilities::string_to_double(
+                  dealii::Utilities::split_string_list(prm.get("V")));
+              AssertThrow(num_phases==phase_V.size(),
+                  ExcMessage("The number of elements in the activation volume (V) list "
+                    "does not match number of phase changes."));
+              phase_n = dealii::Utilities::string_to_double(
+                  dealii::Utilities::split_string_list(prm.get("n")));
+              AssertThrow(num_phases==phase_n.size(),
+                  ExcMessage("The number of elements in the exponent (n) list "
+                    "does not match number of phase changes."));
             }
             prm.leave_subsection();
           }
