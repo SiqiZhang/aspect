@@ -272,6 +272,7 @@ namespace aspect
     std::vector<double> phase_temperatures;
     std::vector<double> phase_slopes;
     std::vector<double> phase_width;
+    std::vector<int>    phase_num_prm_sets;
     std::vector<double> phase_A;
     std::vector<double> phase_E;
     std::vector<double> phase_V;
@@ -287,6 +288,8 @@ namespace aspect
     double extraction_depth;
         
     double get_viscosity_arrhenius (double temperature, double pressure, double strain_rate_II, double A, double E, double V, double n) const;
+
+    double get_viscosity_phase_layer(int i, double temperature, double pressure, double strain_rate_II) const;
 
     };
   }

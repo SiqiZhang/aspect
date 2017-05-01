@@ -114,17 +114,14 @@ namespace aspect
 
       //Phase changes
       double phase_viscosity = viscosity;
+      int phase_prm_begin = 0;
       for(int i=num_phases-1;i>=0;i--)
       {
         double phase_pressure = phase_pressures[i] 
           + phase_slopes[i] * ( temperature - phase_temperatures[i] );
         if(pressure>(phase_pressure - phase_width[i]))
         {
-          double phase_viscosity = get_viscosity_arrhenius(temperature,pressure,strain_rate_II,
-                                                           phase_A[i],
-                                                           phase_E[i],
-                                                           phase_V[i],
-                                                           phase_n[i]);
+          double phase_viscosity = get_viscosity_phase_layer(i,temperature,pressure,strain_rate_II);
           if(pressure<(phase_pressure + phase_width[i]))
             // In phase transition zone.
           {
@@ -132,11 +129,7 @@ namespace aspect
             if(i==0)
               viscosity_pre = viscosity;
             else
-              viscosity_pre = get_viscosity_arrhenius(temperature,pressure,strain_rate_II,
-                                                      phase_A[i-1],
-                                                      phase_E[i-1],
-                                                      phase_V[i-1],
-                                                      phase_n[i-1]);
+              viscosity_pre = get_viscosity_phase_layer(i-1,temperature,pressure,strain_rate_II);
             // Viscosity smoothing. Linear variation in magnitude in phase transition zone.
             viscosity = viscosity_pre * pow(phase_viscosity/viscosity_pre,
                 (pressure - (phase_pressure - phase_width[i]))/(2.*phase_width[i]));
@@ -146,9 +139,7 @@ namespace aspect
             viscosity = phase_viscosity;
           break;
         }
-
-
-
+        phase_prm_begin += phase_num_prm_sets[i];
       }
 
 
@@ -157,6 +148,29 @@ namespace aspect
        viscosity = std::max(viscosity,viscosity_cutoff_low);
 
        return viscosity;
+    }
+
+    template <int dim>
+    double
+    Melt<dim>::
+    get_viscosity_phase_layer(int    i,
+                              double temperature,
+                              double pressure,
+                              double strain_rate_II) const
+    {
+      int prm_start = 0;
+      for(unsigned j=0;j<i;j++) prm_start += phase_num_prm_sets[j];
+      
+      double sum_viscosity_inverse = 0.;
+      for(unsigned j=0;j<phase_num_prm_sets[i];j++)
+      {
+        sum_viscosity_inverse += 1./ get_viscosity_arrhenius(temperature,pressure,strain_rate_II,
+                                                             phase_A[prm_start + j],
+                                                             phase_E[prm_start + j],
+                                                             phase_V[prm_start + j],
+                                                             phase_n[prm_start + j]);
+      }
+      return phase_num_prm_sets[i]/sum_viscosity_inverse;
     }
 
     template <int dim>
@@ -790,6 +804,10 @@ namespace aspect
                prm.declare_entry ("Transition zone thickness","",
                                   Patterns::List(Patterns::Double ()),
                                   "List of transition zone thickness in pressure. Unist: Pa");
+               prm.declare_entry ("Number of parameter sets for each layer","",
+                                  Patterns::List(Patterns::Integer (0)),
+                                  "In each phase layer, multiple parameter sets for viscosity can be given. "
+                                  "Harmonic Mean is used for multiple parameter sets. ");
                prm.declare_entry ("A","",
                                   Patterns::List(Patterns::Double ()),
                                   "List of viscosity prefactors");
@@ -1048,26 +1066,33 @@ namespace aspect
               AssertThrow(num_phases==phase_width.size(),
                   ExcMessage("The number of elements in the transition zone thickness list " 
                     "does not match number of phase changes."));
+              phase_num_prm_sets = dealii::Utilities::string_to_int(
+                   dealii::Utilities::split_string_list(prm.get("Number of parameter sets for each layer")));
+              AssertThrow(num_phases==phase_num_prm_sets.size(),
+                   ExcMessage("The number of elements in the Number of parameter sets for each layer "
+                              "list does not match number of phase changes."));
+              int total_prm_sets = std::accumulate(phase_num_prm_sets.begin(),phase_num_prm_sets.end(),0);
+              
               phase_A = dealii::Utilities::string_to_double(
                   dealii::Utilities::split_string_list(prm.get("A")));
-              AssertThrow(num_phases==phase_A.size(),
+              AssertThrow(total_prm_sets==phase_A.size(),
                   ExcMessage("The number of elements in the viscosity factor (A) list "
-                    "does not match number of phase changes."));
+                    "does not match number of phase change viscosity parameter sets."));
               phase_E = dealii::Utilities::string_to_double(
                   dealii::Utilities::split_string_list(prm.get("E")));
-              AssertThrow(num_phases==phase_E.size(),
+              AssertThrow(total_prm_sets==phase_E.size(),
                   ExcMessage("The number of elements in the activation energy (E) list "
-                    "does not match number of phase changes."));
+                    "does not match number of phase change viscosity parameter sets."));
               phase_V = dealii::Utilities::string_to_double(
                   dealii::Utilities::split_string_list(prm.get("V")));
-              AssertThrow(num_phases==phase_V.size(),
+              AssertThrow(total_prm_sets==phase_V.size(),
                   ExcMessage("The number of elements in the activation volume (V) list "
-                    "does not match number of phase changes."));
+                    "does not match number of phase change viscosity parameter sets."));
               phase_n = dealii::Utilities::string_to_double(
                   dealii::Utilities::split_string_list(prm.get("n")));
-              AssertThrow(num_phases==phase_n.size(),
+              AssertThrow(total_prm_sets==phase_n.size(),
                   ExcMessage("The number of elements in the exponent (n) list "
-                    "does not match number of phase changes."));
+                    "does not match number of phase change viscosity parameter sets."));
             }
             prm.leave_subsection();
           }
