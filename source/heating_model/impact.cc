@@ -182,6 +182,11 @@ namespace aspect
            */
           Ps=Rho0*(C+S*Uc)*Uc*pow(Rc/r,1.25+0.625*log10(Impacts_active[i].velocity/1.e3));
         }
+        if(shock_type == 1) 
+        {
+          /* For foundering shocks */
+          Ps -= pressure;
+        }
         Pd=Ps;
         if(Pd>0.)
         {
@@ -258,7 +263,12 @@ namespace aspect
                              "ratio between mantle solidus and liquidus (eg. 0 means solidus, 1 means "
                              "liquidus). Any value greater than 0 will allow some partial melt left in the "
                              "impact zones.");
-                             
+          prm.declare_entry ("Shock type", "0",
+                             Patterns::Integer(0,1),
+                             "Two different shock types outlined by Watters et al 2009 "
+                             "depending on lithostatic pressure. Without lithostatic pressure we use "
+                             "ordinary shocks (0), if we subtract lithostatic pressure, it is a "
+                             " foundering shock (1)");                           
 
         }
         prm.leave_subsection();
@@ -293,6 +303,7 @@ namespace aspect
                     ExcMessage ("To define a plane for the 2D model the two assigned points "
                                 "may not be equal."));
           super_solidus_ratio = prm.get_double("Super solidus ratio");
+          shock_type = prm.get_integer("Shock type");
         }
         prm.leave_subsection();
       }

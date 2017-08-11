@@ -113,6 +113,7 @@ namespace aspect
         Tensor<1,2> surface_point_two;
         std::string filename;
         double      super_solidus_ratio;
+        int         shock_type;
     };
   }
 }
