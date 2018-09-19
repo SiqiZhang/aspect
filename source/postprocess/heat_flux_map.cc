@@ -25,6 +25,12 @@
 
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/fe/fe_values.h>
+#include <deal.II/fe/fe_tools.h>
+#include <deal.II/fe/fe_dgq.h>
+#include <deal.II/lac/vector.h>
+#include <deal.II/dofs/dof_tools.h>
+//#include <deal.II/lac/la_parallel_vector.h>
+#include <deal.II/fe/fe_system.h>
 
 namespace aspect
 {
@@ -50,23 +56,49 @@ namespace aspect
 
         // create a quadrature for the boundary faces
         const QGauss<dim-1> quadrature_formula_face (simulator_access.get_fe().base_element(simulator_access.introspection().base_elements.temperature).degree+1);
-        FEFaceValues<dim> fe_face_values (simulator_access.get_mapping(),
-                                          simulator_access.get_fe(),
-                                          quadrature_formula_face,
-                                          update_normal_vectors |
-                                          update_JxW_values);
+
+        FE_DGQ<dim> heat_flow_fe(simulator_access.get_fe().base_element(simulator_access.introspection().base_elements.temperature).degree);
+        FEFaceValues<dim> heat_flow_fe_face_values (simulator_access.get_mapping(),
+                                                    heat_flow_fe,
+                                                    quadrature_formula_face,
+                                                    update_normal_vectors |
+                                                    update_values |
+                                                    update_JxW_values);
+        DoFHandler<dim> heat_flow_dof_handler(simulator_access.get_triangulation());
+        heat_flow_dof_handler.distribute_dofs (heat_flow_fe);
+
+        std::vector< Vector<double> >
+          local_heat_flow_values_at_qpoints(dim),
+          local_heat_flow_fe_values (dim);
+
+        std::vector< std::vector<double> >
+          values_at_face_qpoints(dim);
+
+        for(unsigned int i=0;i<dim;i++)
+        {
+          local_heat_flow_values_at_qpoints[i].reinit(quadrature_formula.size());
+          local_heat_flow_fe_values[i].reinit(heat_flow_fe.dofs_per_cell);
+          values_at_face_qpoints[i].resize(quadrature_formula_face.size());
+        }
 
         typename MaterialModel::Interface<dim>::MaterialModelInputs in(fe_values.n_quadrature_points, simulator_access.n_compositional_fields());
         typename MaterialModel::Interface<dim>::MaterialModelOutputs out(fe_values.n_quadrature_points, simulator_access.n_compositional_fields());
 
         std::vector<Tensor<1,dim> > temperature_gradients (quadrature_formula.size());
 
+        FullMatrix<double> qpoint_to_dof_matrix (heat_flow_fe.dofs_per_cell,
+                                                 quadrature_formula.size());
+        FETools::compute_projection_from_quadrature_points_matrix
+                    (heat_flow_fe,
+                     quadrature_formula, quadrature_formula,
+                     qpoint_to_dof_matrix);
         // loop over all of the surface cells and evaluate the heat flux
         typename DoFHandler<dim>::active_cell_iterator
         cell = simulator_access.get_dof_handler().begin_active(),
-        endc = simulator_access.get_dof_handler().end();
+        endc = simulator_access.get_dof_handler().end(),
+        dg_cell = heat_flow_dof_handler.begin_active();;
 
-        for (; cell!=endc; ++cell)
+        for (; cell!=endc; ++cell, ++dg_cell)
           if (cell->is_locally_owned() && cell->at_boundary())
             {
               fe_values.reinit (cell);
@@ -94,37 +126,45 @@ namespace aspect
                   temperature_gradients);
 
               Tensor<1,dim> heat_flux;
-              double cell_volume = 0;
-
               for (unsigned int q=0; q<fe_values.n_quadrature_points; ++q)
-                {
-                  heat_flux += (-out.thermal_conductivities[q] * temperature_gradients[q] +
-                                in.velocity[q] * out.densities[q] * out.specific_heat[q] * in.temperature[q]) *
-                               fe_values.JxW(q);
-
-                  cell_volume += fe_values.JxW(q);
-                }
+              {
+                heat_flux = (-out.thermal_conductivities[q] * temperature_gradients[q] +
+                            in.velocity[q] * out.densities[q] * out.specific_heat[q] * in.temperature[q]);
+                for(unsigned int i=0;i<dim;i++)
+                  local_heat_flow_values_at_qpoints[i](q)=heat_flux[i];
+              }
+              for(unsigned int i=0;i<dim;i++)
+              {
+                qpoint_to_dof_matrix.vmult (local_heat_flow_fe_values[i],
+                                            local_heat_flow_values_at_qpoints[i]);
+              }
 
               for (unsigned int f=0; f<GeometryInfo<dim>::faces_per_cell; ++f)
                 if (cell->at_boundary(f))
                   {
-                    fe_face_values.reinit (cell, f);
+                    heat_flow_fe_face_values.reinit (dg_cell, f);
 
-                    Tensor<1,dim> face_normal_vector;
+                    Tensor<1,dim> heat_flow_vector;
                     double face_area = 0;
+                    double face_heat_flow = 0.;
 
-                    for (unsigned int q=0; q<fe_face_values.n_quadrature_points; ++q)
+                    for (unsigned int q=0; q<heat_flow_fe_face_values.n_quadrature_points; ++q)
                       {
-                        face_normal_vector += fe_face_values.normal_vector(q) *
-                                              fe_face_values.JxW(q);
+                        for(unsigned int i=0;i<dim;i++)
+                        {
+                          heat_flow_vector[i] = 0;
+                          for(unsigned int i_dof=0;i_dof<heat_flow_fe.dofs_per_cell;i_dof++)
+                            heat_flow_vector[i] += heat_flow_fe_face_values.shape_value(i_dof,q) * 
+                                                   local_heat_flow_fe_values[i](i_dof);
+                        }
+                        face_heat_flow += heat_flow_fe_face_values.normal_vector(q) *
+                                          heat_flow_vector * 
+                                          heat_flow_fe_face_values.JxW(q);
 
-                        face_area += fe_face_values.JxW(q);
+                        face_area += heat_flow_fe_face_values.JxW(q);
                       }
 
-                    face_normal_vector /= face_normal_vector.norm();
-
-                    heat_flux_and_area[cell->active_cell_index()][f].first = ((heat_flux * face_normal_vector)) * face_area /
-                                                                             cell_volume;
+                    heat_flux_and_area[cell->active_cell_index()][f].first = face_heat_flow;
                     heat_flux_and_area[cell->active_cell_index()][f].second = face_area;
                   }
             }
